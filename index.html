@@ -3,823 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="NinjaAgent - AI Autonomous Trading Assistant for Injective Protocol">
-    <meta name="theme-color" content="#0a0a1a">
-    <title>NinjaAgent - AI Autonomous Trading for Injective</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>NinjaAgent - AI Trading for Injective</title>
     <style>
-        *, *::before, *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --bg-primary: #0a0a12;
-            --bg-secondary: #12121f;
-            --bg-card: rgba(255, 255, 255, 0.03);
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0b0;
-            --accent-cyan: #00d4aa;
-            --accent-purple: #7c3aed;
-            --accent-pink: #ec4899;
-            --border-color: rgba(255, 255, 255, 0.06);
-        }
-        
-        html {
-            scroll-behavior: smooth;
-            height: 100%;
-            overflow-x: hidden;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
-        
-        /* Particle canvas */
-        #particles-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-            opacity: 0.4;
-        }
-        
-        /* Navigation */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            padding: 1.5rem 2rem;
-            backdrop-filter: blur(20px);
-            background: rgba(10, 10, 18, 0.8);
-            border-bottom: 1px solid var(--border-color);
-            transition: all 0.4s ease;
-        }
-        
-        .navbar.scrolled {
-            padding: 1rem 2rem;
-            background: rgba(10, 10, 18, 0.95);
-        }
-        
-        .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .nav-logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-        
-        .nav-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: color 0.3s ease;
-            position: relative;
-        }
-        
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
-            transition: width 0.3s ease;
-        }
-        
-        .nav-links a:hover {
-            color: var(--text-primary);
-        }
-        
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-        
-        .nav-cta {
-            padding: 0.6rem 1.5rem;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .nav-cta:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 212, 170, 0.3);
-        }
-        
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            padding: 6rem 2rem 4rem;
-            z-index: 1;
-        }
-        
-        .hero-content {
-            text-align: center;
-            max-width: 800px;
-        }
-        
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(0, 212, 170, 0.1);
-            border: 1px solid rgba(0, 212, 170, 0.2);
-            padding: 0.6rem 1.2rem;
-            border-radius: 30px;
-            font-size: 0.85rem;
-            color: var(--accent-cyan);
-            margin-bottom: 2rem;
-            animation: fadeInUp 0.6s ease 0.1s both;
-        }
-        
-        .hero-badge span {
-            animation: pulse 2s infinite;
-        }
-        
-        .hero-title {
-            font-size: clamp(3rem, 6vw, 5rem);
-            font-weight: 900;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            animation: fadeInUp 0.6s ease 0.2s both;
-        }
-        
-        .hero-title .gradient-text {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-size: 200% 200%;
-            animation: gradientShift 4s ease infinite;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            animation: fadeInUp 0.6s ease 0.3s both;
-        }
-        
-        .hero-cta {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            animation: fadeInUp 0.6s ease 0.4s both;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: none;
-            font-size: 0.95rem;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            color: white;
-            box-shadow: 0 4px 15px rgba(0, 212, 170, 0.3);
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(0, 212, 170, 0.4);
-        }
-        
-        .btn-secondary {
-            background: transparent;
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-        
-        .btn-secondary:hover {
-            border-color: var(--accent-cyan);
-            background: rgba(0, 212, 170, 0.05);
-        }
-        
-        /* Floating elements */
-        .floating-elements {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-        
-        .float-element {
-            position: absolute;
-            opacity: 0.05;
-            animation: float 8s ease-in-out infinite;
-        }
-        
-        /* Features */
-        .features {
-            padding: 6rem 2rem;
-            position: relative;
-            z-index: 2;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        
-        .section-subtitle {
-            color: var(--accent-cyan);
-            text-align: center;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-        }
-        
-        .section-title {
-            text-align: center;
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 800;
-            margin-bottom: 3rem;
-        }
-        
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-        }
-        
-        .feature-card {
-            padding: 2rem;
-            border-radius: 20px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-        
-        .feature-card:hover::before {
-            opacity: 1;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(0, 212, 170, 0.2);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-        }
-        
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-        
-        .feature-card h3 {
-            font-size: 1.2rem;
-            margin-bottom: 0.8rem;
-            color: var(--text-primary);
-        }
-        
-        .feature-card p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-        
-        /* Architecture Section */
-        .architecture {
-            padding: 6rem 2rem;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-        
-        .architecture-flow {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .arch-step {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            transition: all 0.4s ease;
-        }
-        
-        .arch-step:hover {
-            border-color: var(--accent-cyan);
-            transform: translateX(10px);
-        }
-        
-        /* Stats */
-        .stats {
-            padding: 6rem 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            max-width: 1000px;
-            margin: 0 auto;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-        
-        .stat-item {
-            padding: 2rem;
-        }
-        
-        .stat-number {
-            font-size: 3rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: block;
-        }
-        
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-        
-        /* CTA Section */
-        .cta-section {
-            padding: 6rem 2rem;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-        
-        .cta-box {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 4rem 2rem;
-            background: linear-gradient(135deg, rgba(0, 212, 170, 0.1), rgba(124, 58, 237, 0.1));
-            border: 1px solid rgba(0, 212, 170, 0.2);
-            border-radius: 24px;
-        }
-        
-        /* Footer */
-        .footer {
-            padding: 4rem 2rem 2rem;
-            text-align: center;
-            border-top: 1px solid var(--border-color);
-            position: relative;
-            z-index: 2;
-            background: rgba(10, 10, 18, 0.9);
-        }
-        
-        .footer-text {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-        
-        .footer-links {
-            margin-top: 1.5rem;
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-        }
-        
-        .footer-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.85rem;
-            transition: color 0.3s ease;
-        }
-        
-        .footer-links a:hover {
-            color: var(--accent-cyan);
-        }
-        
-        /* Animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        /* Scroll Reveal */
-        .reveal {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: all 0.8s ease;
-        }
-        
-        .reveal.active {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        /* Mobile */
-        @media (max-width: 768px) {
-            .nav-links { display: none; }
-            .hero { padding: 5rem 1.5rem 3rem; }
-            .features { padding: 4rem 1.5rem; }
-            .hero-title { font-size: 2.5rem; }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a0f; color: #e0e0ff; min-height: 100vh; }
+        .hero { text-align: center; padding: 80px 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
+        .hero .logo { width: 180px; height: 54px; margin: 0 auto 20px; }
+        .hero h1 { font-size: 2.8rem; font-weight: 700; background: linear-gradient(90deg, #00d4ff, #7b2cbf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; }
+        .hero p { font-size: 1.2rem; color: #a0a0c0; max-width: 600px; margin: 0 auto 30px; }
+        .hero .tag { display: inline-block; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); color: #00d4ff; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; margin: 5px; }
+        .section { max-width: 1000px; margin: 0 auto; padding: 60px 20px; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin: 40px 0; }
+        .feature { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 30px; transition: transform 0.3s; }
+        .feature:hover { transform: translateY(-5px); }
+        .feature h3 { color: #00d4ff; margin-bottom: 12px; font-size: 1.1rem; }
+        .feature p { color: #a0a0c0; font-size: 0.95rem; line-height: 1.6; }
+        .cta { display: inline-flex; gap: 15px; margin-top: 30px; }
+        .btn { padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #7b2cbf); color: #fff; }
+        .btn-secondary { background: transparent; border: 2px solid rgba(255,255,255,0.2); color: #e0e0ff; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 10px 30px rgba(0,212,255,0.2); }
+        .demo { background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); }
+        .demo-box { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 30px; font-family: 'Courier New', monospace; }
+        .demo-box .prompt { color: #00ff88; }
+        .demo-box .response { color: #00d4ff; margin-top: 10px; }
+        footer { text-align: center; padding: 40px 20px; color: #606080; font-size: 0.9rem; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .pulse { animation: pulse 2s infinite; }
     </style>
 </head>
 <body>
-    <!-- Particle Canvas -->
-    <canvas id="particles-canvas"></canvas>
-    
-    <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="nav-container">
-            <div class="nav-logo">
-                <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-                    <path d="M15 2L28 9V21L15 28L2 21V9L15 2Z" stroke="url(#logo-gradient)" stroke-width="2" fill="none"/>
-                    <defs>
-                        <linearGradient id="logo-gradient" x1="2" y1="2" x2="28" y2="28">
-                            <stop offset="0%" stop-color="#00d4aa"/>
-                            <stop offset="100%" stop-color="#7c3aed"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
-                NinjaAgent
-            </div>
-            <ul class="nav-links">
-                <li><a href="#about">About</a></li>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#architecture">Architecture</a></li>
-                <li><a href="https://github.com/salsabila2507/ninjaagent" target="_blank">GitHub</a></li>
-            </ul>
-            <a href="#" class="nav-cta">Get Started</a>
+    <div class="hero">
+        <img src="https://raw.githubusercontent.com/salsabila2507/ninjaagent/main/assets/logo.svg" alt="NinjaAgent Logo" class="logo">
+        <h1>🥷 NinjaAgent</h1>
+        <p>AI-Powered Autonomous Trading Assistant for Injective Protocol</p>
+        <div>
+            <span class="tag">🤖 NVIDIA AI</span>
+            <span class="tag">⛓ Injective Protocol</span>
+            <span class="tag">📱 Telegram Bot</span>
         </div>
-    </nav>
-    
-    <!-- Hero Section -->
-    <section class="hero" id="about">
-        <div class="floating-elements">
-            <div class="float-element" style="top: 10%; left: 10%; font-size: 3rem; animation-delay: 0s;">◆</div>
-            <div class="float-element" style="top: 20%; right: 15%; font-size: 2rem; animation-delay: 2s;">●</div>
-            <div class="float-element" style="bottom: 20%; left: 20%; font-size: 2.5rem; animation-delay: 4s;">◆</div>
-        </div>
-        
-        <div class="hero-content">
-            <div class="hero-badge">
-                <span>🚀</span> Injective Solo AI Builder Sprint 2026
-            </div>
-            
-            <h1 class="hero-title">
-                <span class="gradient-text">NinjaAgent</span>
-            </h1>
-            
-            <p class="hero-subtitle">
-                AI-Powered Autonomous Trading Assistant that understands natural language commands and executes trades on Injective Protocol — no complex interfaces, just tell it what you want.
-            </p>
-            
-            <div class="hero-cta">
-                <a href="https://github.com/salsabila2507/ninjaagent" target="_blank" class="btn btn-primary">
-                    🚀 View on GitHub
-                </a>
-                <a href="#features" class="btn btn-secondary">
-                    Explore Features →
-                </a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Stats -->
-    <div class="stats" id="stats">
-        <div class="stat-item">
-            <span class="stat-number">⚡</span>
-            <div class="stat-label">Natural Language<br>Trading</div>
-        </div>
-        <div class="stat-item">
-            <span class="stat-number">🤖</span>
-            <div class="stat-label">NVIDIA AI<br>Powered</div>
-        </div>
-        <div class="stat-item">
-            <span class="stat-number">⛓</span>
-            <div class="stat-label">Injective<br>Protocol</div>
-        </div>
-        <div class="stat-item">
-            <span class="stat-number">📱</span>
-            <div class="stat-label">Telegram Bot<br>Signals</div>
+        <div class="cta">
+            <a href="https://github.com/salsabila2507/ninjaagent" class="btn btn-primary" target="_blank">🚀 GitHub Repo</a>
+            <a href="#" class="btn btn-secondary">📊 Demo Video</a>
         </div>
     </div>
-    
-    <!-- Features -->
-    <section class="features" id="features">
-        <div class="section-subtitle">Core Capabilities</div>
-        <h2 class="section-title">What NinjaAgent Can Do</h2>
-        
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🗣</div>
-                <h3>Natural Language Trading</h3>
-                <p>"Buy 10 INJ when it drops below $20" — no complex interfaces, just tell NinjaAgent what you want and it handles the rest.</p>
+
+    <div class="section">
+        <h2 style="text-align:center; font-size:2rem; margin-bottom:10px;">Core Features</h2>
+        <p style="text-align:center; color:#a0a0c0; margin-bottom:40px;">Natural language trading powered by AI</p>
+        <div class="features">
+            <div class="feature">
+                <h3>🗣 Natural Language Trading</h>
+                <p>"Buy 10 INJ at market" - No complex interfaces, just tell NinjaAgent what you want and it executes.</p>
             </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <h3>Instant Execution</h3>
-                <p>Direct integration with Injective Protocol for real-time trade execution powered by WebSocket connections.</p>
+            <div class="feature">
+                <h3>⚡ Injective Protocol Integration</h>
+                <p>Direct connection to Injective blockchain for instant trade execution with real-time market data.</p>
             </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">🤖</div>
-                <h3>NVIDIA AI Parser</h3>
-                <p>Intelligent command parsing using NVIDIA's Qwen Coder model for accurate trade intent recognition.</p>
+            <div class="feature">
+                <h3>🤖 NVIDIA AI Parser</h>
+                <p>Powered by NVIDIA's Qwen Coder LLM to accurately understand and parse trading commands.</p>
             </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">📱</div>
-                <h3>Telegram Bot</h3>
-                <p>Get real-time trading signals, alerts, and execute trades directly from Telegram — anywhere, anytime.</p>
+            <div class="feature">
+                <h3>📱 Telegram Bot</h>
+                <p>Get real-time trading signals, alerts, and execute trades directly from Telegram.</p>
             </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <h3>Technical Analysis</h3>
-                <p>RSI, MACD, and Bollinger Bands analysis with automated signal generation for informed decisions.</p>
+            <div class="feature">
+                <h3>📊 Technical Analysis</h>
+                <p>RSI, MACD, and Bollinger Bands analysis with automated signal generation for trading decisions.</p>
             </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">🛡</div>
-                <h3>Risk Management</h3>
-                <p>Built-in stop-loss, take-profit, and position size controls to protect your portfolio from major losses.</p>
+            <div class="feature">
+                <h3>🛡 Risk Management</h>
+                <p>Built-in stop-loss, take-profit, and position size controls to protect your portfolio.</p>
             </div>
         </div>
-    </section>
-    
-    <!-- Architecture -->
-    <section class="architecture" id="architecture">
-        <div class="section-subtitle">System Design</div>
-        <h2 class="section-title">How It Works</h2>
-        
-        <div class="architecture-flow">
-            <div class="arch-step">
-                <div style="font-size: 2rem;">🗣</div>
-                <div style="text-align: left;">
-                    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">1. Voice Your Intent</h3>
-                    <p style="color: var(--text-secondary);">Type natural language commands like "buy 10 INJ at market" via dashboard or Telegram</p>
-                </div>
-            </div>
-            
-            <div style="text-align: center; color: var(--accent-cyan); font-size: 1.5rem;">↓</div>
-            
-            <div class="arch-step">
-                <div style="font-size: 2rem;">🤖</div>
-                <div style="text-align: left;">
-                    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">2. AI Parses Command</h3>
-                    <p style="color: var(--text-secondary);">NVIDIA AI understands your intent and converts it to structured trading parameters</p>
-                </div>
-            </div>
-            
-            <div style="text-align: center; color: var(--accent-cyan); font-size: 1.5rem;">↓</div>
-            
-            <div class="arch-step">
-                <div style="font-size: 2rem;">⚡</div>
-                <div style="text-align: left;">
-                    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">3. Execute on Injective</h3>
-                    <p style="color: var(--text-secondary);">Trade is executed on Injective Protocol with risk management controls</p>
-                </div>
-            </div>
-            
-            <div style="text-align: center; color: var(--accent-cyan); font-size: 1.5rem;">↓</div>
-            
-            <div class="arch-step">
-                <div style="font-size: 2rem;">📊</div>
-                <div style="text-align: left;">
-                    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">4. Monitor & Alert</h3>
-                    <p style="color: var(--text-secondary);">Real-time portfolio updates and Telegram alerts keep you informed</p>
-                </div>
+    </div>
+
+    <div class="section demo">
+        <h2 style="text-align:center; font-size:2rem; margin-bottom:20px;">Live Demo</h2>
+        <div class="demo-box">
+            <div class="prompt">$ ninjaagent "Buy 10 INJ at market, stop loss at $18"</div>
+            <div class="response">
+> Parsed: {"action": "buy", "asset": "INJ", "amount": 10, "price": "market", "stop_loss": 18}<br>
+> Executing trade on Injective Protocol...<br>
+> ✅ Order filled: 10 INJ @ $24.50<br>
+> Stop-loss set at $18.00<br>
+> Portfolio updated: +10 INJ, total value: $245.00
             </div>
         </div>
-    </section>
-    
-    <!-- Tech Stack -->
-    <section class="features">
-        <div class="section-subtitle">Built With</div>
-        <h2 class="section-title">Technology Stack</h2>
-        
-        <div class="features-grid" style="max-width: 700px; margin: 0 auto;">
-            <div class="feature-card" style="text-align: center; padding: 1.5rem;">
-                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🐍</div>
-                <h3>Python + FastAPI</h3>
-                <p>High-performance async backend</p>
-            </div>
-            <div class="feature-card" style="text-align: center; padding: 1.5rem;">
-                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚛</div>
-                <h3>Next.js + Tailwind</h3>
-                <p>Modern React frontend</p>
-            </div>
-            <div class="feature-card" style="text-align: center; padding: 1.5rem;">
-                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🌐</div>
-                <h3>Injective Protocol</h3>
-                <p>Cosmos-based DeFi chain</p>
-            </div>
-            <div class="feature-card" style="text-align: center; padding: 1.5rem;">
-                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🧠</div>
-                <h3>NVIDIA AI</h3>
-                <p>Qwen Coder LLM</p>
-            </div>
+    </div>
+
+    <div class="section" style="text-align:center;">
+        <h2 style="font-size:2rem; margin-bottom:20px;">Tech Stack</h2>
+        <p style="color:#a0a0c0; margin-bottom:30px;">Built with modern, reliable technologies</p>
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:15px; margin-bottom:40px;">
+            <span style="background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.3); padding:10px 20px; border-radius:8px;">Python + FastAPI</span>
+            <span style="background:rgba(123,44,191,0.1); border:1px solid rgba(123,44,191,0.3); padding:10px 20px; border-radius:8px;">Next.js + Tailwind</span>
+            <span style="background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.3); padding:10px 20px; border-radius:8px;">NVIDIA AI (Qwen)</span>
+            <span style="background:rgba(255,193,7,0.1); border:1px solid rgba(255,193,7,0.3); padding:10px 20px; border-radius:8px;">Injective Protocol</span>
+            <span style="background:rgba(33,150,243,0.1); border:1px solid rgba(33,150,243,0.3); padding:10px 20px; border-radius:8px;">Telegram Bot API</span>
         </div>
-    </section>
-    
-    <!-- CTA Section -->
-    <section class="cta-section">
-        <div class="cta-box">
-            <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 1rem;">Ready to Try?</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Deploy your own NinjaAgent or explore the codebase on GitHub.</p>
-            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                <a href="https://github.com/salsabila2507/ninjaagent" target="_blank" class="btn btn-primary">
-                    ⭐ Star on GitHub
-                </a>
-                <a href="https://github.com/salsabila2507/ninjaagent#readme" target="_blank" class="btn btn-secondary">
-                    📖 Documentation
-                </a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-text">
-            <p>🥷 NinjaAgent · Built with 🔥 for Injective Solo AI Builder Sprint 2026</p>
-        </div>
-        <div class="footer-links">
-            <a href="https://github.com/salsabila2507/ninjaagent" target="_blank">GitHub</a>
-            <a href="https://github.com/salsabila2507/ninjaagent#readme" target="_blank">Documentation</a>
-            <a href="#stats">Dashboard</a>
-        </div>
+    </div>
+
+    <footer>
+        <p>🥷 NinjaAgent · Built for Injective Solo AI Builder Sprint 2026</p>
+        <p style="margin-top:10px;"><a href="https://github.com/salsabila2507/ninjaagent" style="color:#00d4ff;">GitHub</a> · <a href="#" style="color:#00d4ff;">Demo Video</a> · <a href="#" style="color:#00d4ff;">Docs</a></p>
     </footer>
-    
+
     <script>
-        // Particle system
-        const canvas = document.getElementById('particles-canvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-        
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-        
-        class Particle {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 2 + 0.5;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-                this.speedY = (Math.random() - 0.5) * 0.5;
-                this.opacity = Math.random() * 0.5 + 0.1;
-            }
-            
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
-            }
-            
-            draw() {
-                ctx.globalAlpha = this.opacity;
-                ctx.fillStyle = '#00d4aa';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        
-        function initParticles() {
-            particles = [];
-            const count = Math.min(50, Math.floor((canvas.width * canvas.height) / 20000));
-            for (let i = 0; i < count; i++) {
-                particles.push(new Particle());
-            }
-        }
-        
-        function animateParticles() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => {
-                p.update();
-                p.draw();
-            });
-            requestAnimationFrame(animateParticles);
-        }
-        
-        initParticles();
-        animateParticles();
-        
-        // Navbar scroll effect
-        const navbar = document.getElementById('navbar');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
-        });
-        
-        // Scroll reveal animation
-        const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('active');
-                }
-            });
-        }, observerOptions);
-        
-        document.querySelectorAll('.feature-card, .stat-item, .arch-step').forEach(el => {
-            el.classList.add('reveal');
-            observer.observe(el);
-        });
+        // Simple console animation
+        console.log('%c🥷 NinjaAgent', 'font-size:20px; color:#00d4ff; font-weight:bold;');
+        console.log('%cAI Trading for Injective Protocol', 'color:#7b2cbf;');
     </script>
 </body>
 </html>
