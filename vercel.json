@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "ninjaagent-ai-trading",
+  "buildCommand": "pip install -r requirements.txt",
+  "outputDirectory": "staticfiles",
+  "framework": "fastapi",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ]
+}
