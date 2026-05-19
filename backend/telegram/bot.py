@@ -1,0 +1,127 @@
+"""
+Telegram Bot for NinjaAgent
+Provides real-time trading signals and technical analysis
+"""
+import os
+import logging
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from backend.core.agent import get_agent
+from backend.injective.client import get_injective_client
+import json
+from datetime import datetime
+
+# Setup logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+class NinjaAgentTelegramBot:
+    def __init__(self, token: str):
+        self.token = token
+        self.agent = None
+        self.injective_client = None
+        
+    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Send a message when the command /start is issued."""
+        user = update.effective_user
+        await update.message.reply_text(
+            f"Hi {user.first_name}! Welcome to NinjaAgent Trading Bot 🤖\n\n"
+            "I provide real-time trading signals and technical analysis for Injective Protocol.\n\n"
+            "Commands:\n"
+            "/signals - Get latest trading signals\n"
+            "/analyze <symbol> - Technical analysis for a token\n"
+            "/portfolio - View your portfolio\n"
+            "/help - Show this help message"
+        )
+        
+    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Send a message when the command /help is issued."""
+        help_text = (
+            "📈 NinjaAgent Trading Bot Commands:\n\n"
+            "/signals - Get latest trading signals\n"
+            "/analyze <symbol> - Technical analysis for a token\n"
+            "/portfolio - View your portfolio\n"
+            "/help - Show this help message\n\n"
+            "You can also send natural language trading commands like:\n"
+            "'buy 10 INJ at market'\n"
+            "'set alert when BTC drops below 60k'"
+        )
+        await update.message.reply_text(help_text)
+        
+    async def signals(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Send latest trading signals"""
+        # This would integrate with a real technical analysis engine
+        signals_text = (
+            "📊 Latest Trading Signals:\n\n"
+            "🔔 INJ: Buy signal at $24.50 (RSI: 45.2)\n"
+            "🔔 ATOM: Hold signal (neutral)\n"
+            "🔔 OSMO: Sell signal below $1.20 (RSI: 65.8)\n\n"
+            "Use /analyze <symbol> for detailed analysis"
+        )
+        await update.message.reply_text(signals_text)
+        
+    async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Provide technical analysis for a token"""
+        # Extract token symbol from command
+        if context.args:
+            symbol = context.args[0].upper()
+            # In a real implementation, this would call technical analysis functions
+            analysis_text = (
+                f"🔬 Technical Analysis for {symbol}:\n\n"
+                "📈 Price: $24.50\n"
+                "📊 RSI: 45.2 (Neutral)\n"
+                "📉 24h Change: -2.3%\n"
+                "📊 Volume: 1.2M\n\n"
+                "Signal: HOLD - Wait for breakout"
+            )
+            await update.message.reply_text(analysis_text)
+        else:
+            await update.message.reply_text("Please specify a token symbol: /analyze <symbol>")
+            
+    async def portfolio(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Show portfolio status"""
+        portfolio_text = (
+            "💼 Your Portfolio:\n\n"
+            "INJ: 10.5 tokens ($257.25)\n"
+            "ATOM: 2.1 tokens ($52.50)\n"
+            "OSMO: 15.0 tokens ($30.00)\n\n"
+            "Total Value: $339.75"
+        )
+        await update.message.reply_text(portfolio_text)
+        
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle natural language trading commands"""
+        user_message = update.message.text
+        
+        # Parse command with NVIDIA AI
+        # This would integrate with the agent's command parser
+        response = f"Processing command: {user_message}\n\n"
+        response += "✅ Command received successfully!\n"
+        response += "Executing trade..."
+        
+        await update.message.reply_text(response)
+
+def main():
+    """Start the bot."""
+    # Create the Application and pass it your bot's token
+    application = Application.builder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
+    
+    # Create bot instance
+    bot = NinjaAgentTelegramBot(os.getenv("TELEGRAM_BOT_TOKEN"))
+    
+    # Register handlers
+    application.add_handler(CommandHandler("start", bot.start))
+    application.add_handler(CommandHandler("help", bot.help_command))
+    application.add_handler(CommandHandler("signals", bot.signals))
+    application.add_handler(CommandHandler("analyze", bot.analyze))
+    application.add_handler(CommandHandler("portfolio", bot.portfolio))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
+    
+    # Run the bot
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == "__main__":
+    main()

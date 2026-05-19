@@ -1,0 +1,24 @@
+{
+  "name": "ninjaagent",
+  "version": "1.0.0",
+  "description": "AI-Powered Autonomous Trading Assistant for Injective Protocol",
+  "main": "backend/main.py",
+  "scripts": {
+    "start": "python backend/main.py",
+    "start-telegram": "python backend/telegram/main.py",
+    "test": "pytest tests/",
+    "dev": "python backend/main.py"
+  },
+  "dependencies": {
+    "fastapi": "^0.95.0",
+    "uvicorn": "^0.22.0",
+    "injective-py": "^0.9.0",
+    "requests": "^2.31.0",
+    "python-telegram-bot": "^4.14.0",
+    "pandas": "^1.5.0",
+    "numpy": "^1.24.0"
+  },
+  "devDependencies": {
+    "pytest": "^7.0.0"
+  }
+}
