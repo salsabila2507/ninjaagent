@@ -5,219 +5,159 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NinjaAgent - AI Trading for Injective</title>
     <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-        }
-        
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #0f0f1a 0%, #000000 100%);
-            color: #e0e0ff;
-            min-height: 100vh;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f0f1b;
+            color: #e2e8f0;
             line-height: 1.6;
+            min-height: 100vh;
         }
-        
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
         }
-        
         header {
             text-align: center;
-            padding: 3rem 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            margin-bottom: 3rem;
+            padding: 4rem 0;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            border-radius: 16px;
+            margin: 2rem 0;
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.2);
         }
-        
-        .hero h1 {
-            font-size: 3.5rem;
+        h1 {
+            font-size: 3rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             margin-bottom: 1rem;
         }
-        
-        .hero p {
-            font-size: 1.3rem;
-            color: #a0a0c0;
+        .tagline {
+            font-size: 1.25rem;
+            opacity: 0.9;
             max-width: 600px;
             margin: 0 auto 2rem;
         }
-        
-        .tag-container {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .tag {
-            display: inline-block;
-            background: rgba(0,212,255,0.1);
-            border: 1px solid rgba(0,212,255,0.3);
-            color: #00d4ff;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-        }
-        
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            gap: 1.5rem;
             margin: 3rem 0;
         }
-        
-        .feature {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
+        .feature-card {
+            background: #1e1e2f;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #2d2d44;
+        }
+        .feature-card h3 {
+            color: #8b5cf6;
+            margin-bottom: 1rem;
+        }
+        .demo-section {
+            background: #1a1a2e;
             border-radius: 16px;
             padding: 2rem;
-            transition: transform 0.3s;
-        }
-        
-        .feature:hover {
-            transform: translateY(-5px);
-        }
-        
-        .feature h3 {
-            color: #00d4ff;
-            margin-bottom: 1rem;
-            font-size: 1.3rem;
-        }
-        
-        .feature p {
-            color: #a0a0c0;
-            line-height: 1.6;
-        }
-        
-        .cta {
-            text-align: center;
             margin: 3rem 0;
+            text-align: center;
         }
-        
         .btn {
-            display: inline-block;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            background: #8b5cf6;
             color: white;
-            text-decoration: none;
+            border: none;
+            padding: 0.75rem 2rem;
             border-radius: 8px;
             font-weight: 600;
-            transition: all 0.3s;
-            margin: 0 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        
         .btn:hover {
-            transform: scale(1.05);
+            background: #7c3aed;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
         }
-        
-        .demo-box {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(0,212,255,0.2);
-            border-radius: 12px;
-            padding: 2rem;
-            font-family: 'Courier New', monospace;
-            margin: 2rem 0;
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #8b5cf6;
+            color: #8b5cf6;
         }
-        
-        .demo-box .prompt {
-            color: #00ff88;
-            margin-bottom: 1rem;
+        .btn-outline:hover {
+            background: rgba(139, 92, 246, 0.1);
+            transform: translateY(-2px);
         }
-        
-        .demo-box .response {
-            color: #00d4ff;
-        }
-        
         footer {
             text-align: center;
-            padding: 3rem 0;
-            color: #606080;
-            font-size: 0.9rem;
-        }
-        
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            .features {
-                grid-template-columns: 1fr;
-            }
+            padding: 2rem;
+            color: #94a3b8;
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="hero">
-            <h1>🥷 NinjaAgent</h1>
-            <p>AI-Powered Autonomous Trading Assistant for Injective Protocol</p>
-            <div class="tag-container">
-                <span class="tag">🤖 NVIDIA AI</span>
-                <span class="tag">⛓ Injective Protocol</span>
-                <span class="tag">📱 Telegram Bot</span>
-            </div>
-        </div>
-    </header>
-
     <div class="container">
+        <header>
+            <h1>🥷 NinjaAgent</h1>
+            <p class="tagline">AI-Powered Autonomous Trading Assistant for Injective Protocol</p>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="https://github.com/salsabila2507/ninjaagent" class="btn">🚀 GitHub Repo</a>
+                <a href="#" class="btn btn-outline">📊 Demo Video</a>
+            </div>
+        </header>
+
         <div class="features">
-            <div class="feature">
+            <div class="feature-card">
                 <h3>🗣 Natural Language Trading</h3>
-                <p>Trade with simple commands like "Buy 10 INJ at market price" or "Set stop-loss at $20". No complex charts or order forms.</p>
+                <p>"Buy 10 INJ at market" - No complex interfaces, just tell NinjaAgent what you want and it executes.</p>
             </div>
-            <div class="feature">
-                <h3>⚡ Injective Protocol</h3>
-                <p>Direct blockchain integration for instant trade execution and real-time market data.</p>
+            <div class="feature-card">
+                <h3>⚡ Injective Protocol Integration</h3>
+                <p>Direct connection to Injective blockchain for instant trade execution with real-time market data.</p>
             </div>
-            <div class="feature">
+            <div class="feature-card">
                 <h3>🤖 NVIDIA AI Parser</h3>
-                <p>Powered by Qwen Coder LLM to accurately understand and parse natural language trading commands.</p>
+                <p>Powered by NVIDIA's Qwen Coder LLM to accurately understand and parse trading commands.</p>
             </div>
-            <div class="feature">
-                <h3>📱 Telegram Integration</h3>
-                <p>Get real-time trading signals and execute trades directly from Telegram.</p>
+            <div class="feature-card">
+                <h3>📱 Telegram Bot</h3>
+                <p>Get real-time trading signals, alerts, and execute trades directly from Telegram.</p>
             </div>
-            <div class="feature">
+            <div class="feature-card">
                 <h3>📊 Technical Analysis</h3>
                 <p>RSI, MACD, and Bollinger Bands analysis with automated signal generation.</p>
             </div>
-            <div class="feature">
+            <div class="feature-card">
                 <h3>🛡 Risk Management</h3>
                 <p>Built-in stop-loss, take-profit, and position size controls to protect your portfolio.</p>
             </div>
         </div>
 
-        <div class="cta">
-            <a href="https://github.com/salsabila2507/ninjaagent" class="btn">🚀 GitHub Repo</a>
-            <a href="#" class="btn">📹 Demo Video</a>
-        </div>
-
-        <div class="demo-box">
-            <div class="prompt">$ ninjaagent "Buy 10 INJ at market, stop loss at $18"</div>
-            <div class="response">
+        <div class="demo-section">
+            <h2>Live Demo</h2>
+            <div style="background: #0f0f1b; border: 1px solid #2d2d44; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; text-align: left; font-family: monospace;">
+                <div style="color: #8b5cf6;">$ ninjaagent "Buy 10 INJ at market, stop loss at $18"</div>
+                <div style="color: #60a5fa; margin: 1rem 0;">
 > Parsed: {"action": "buy", "asset": "INJ", "amount": 10, "price": "market", "stop_loss": 18}<br>
 > Executing trade on Injective Protocol...<br>
 > ✅ Order filled: 10 INJ @ $24.50<br>
 > Stop-loss set at $18.00<br>
 > Portfolio updated: +10 INJ, total value: $245.00
+                </div>
             </div>
         </div>
-    </div>
 
-    <footer>
-        <p>🥷 NinjaAgent · Built for Injective Solo AI Builder Sprint 2026</p>
-        <p style="margin-top:10px;">
-            <a href="https://github.com/salsabila2507/ninjaagent" style="color:#00d4ff;">GitHub</a> · 
-            <a href="#" style="color:#00d4ff;">Demo Video</a> · 
-            <a href="#" style="color:#00d4ff;">Docs</a>
-        </p>
-    </footer>
+        <div style="text-align: center; margin: 3rem 0;">
+            <a href="https://github.com/salsabila2507/ninjaagent" class="btn" style="margin: 0 0.5rem;">📦 GitHub Repo</a>
+            <a href="#" class="btn btn-outline" style="margin: 0 0.5rem;">📹 Demo Video</a>
+            <a href="#" class="btn btn-outline" style="margin: 0 0.5rem;">📖 Docs</a>
+        </div>
+
+        <footer>
+            <p>🥷 NinjaAgent · Built for Injective Solo AI Builder Sprint 2026</p>
+            <p style="margin-top: 1rem; color: #64748b;">
+                <a href="https://github.com/salsabila2507/ninjaagent" style="color: #8b5cf6;">GitHub</a> · 
+                <a href="#" style="color: #8b5cf6;">Demo Video</a> · 
+                <a href="#" style="color: #8b5cf6;">Docs</a>
+            </p>
+        </footer>
+    </div>
 </body>
 </html>
