@@ -57,7 +57,7 @@ NVIDIA_API_KEY=your_nvidia_api_key_here
 INJECTIVE_MNEMONIC=your_injective_wallet_mnemonic_here
 INJECTIVE_NETWORK=testnet  # or mainnet
 INJECTIVE_MARKET_ID=inj-usdt  # default market
-TELEGRAM_BOT_TOKEN=8519702355:AAFdHDt_13r0Psn_uizxbaIXXHH0gCbYIpA
+TELEGRAM_BOT_TOKEN=your_bot_token
 ```
 
 ### Run the Application
