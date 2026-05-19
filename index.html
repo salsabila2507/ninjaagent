@@ -3,243 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NinjaAgent - AI Trading Bot for Injective Protocol</title>
+    <title>NinjaAgent - AI Trading for Injective</title>
     <style>
-        :root {
-            --ninja-black: #0a0a0f;
-            --ninja-purple: #7b2cbf;
-            --ninja-cyan: #00d4ff;
-            --ninja-green: #00ff88;
-            --ninja-red: #ff3860;
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-            background: var(--ninja-black);
-            color: #e0e0ff; 
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #000000 100%);
+            color: #e0e0ff;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            line-height: 1.6;
         }
-        .hero {
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
             text-align: center;
-            padding: 100px 20px;
-            background: linear-gradient(135deg, #1a1a2e 0%, #0a0a0f 100%);
-            position: relative;
-            overflow: hidden;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            margin-bottom: 3rem;
         }
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: 
-                radial-gradient(circle at 20% 30%, var(--ninja-purple) 0%, transparent 20%),
-                radial-gradient(circle at 80% 70%, var(--ninja-cyan) 0%, transparent 20%);
-            opacity: 0.1;
-            z-index: 0;
-        }
-        .hero-content {
-            position: relative;
-            z-index: 1;
-        }
+        
         .hero h1 {
-            font-size: 4rem;
+            font-size: 3.5rem;
             font-weight: 800;
-            background: linear-gradient(90deg, var(--ninja-cyan), var(--ninja-purple));
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 20px;
-            text-shadow: 0 0 30px var(--ninja-purple);
+            margin-bottom: 1rem;
         }
+        
         .hero p {
             font-size: 1.3rem;
             color: #a0a0c0;
-            max-width: 700px;
-            margin: 0 auto 40px;
-            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto 2rem;
         }
+        
         .tag-container {
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 12px;
-            margin: 30px 0;
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
+        
         .tag {
-            background: rgba(123, 44, 191, 0.15);
-            border: 1px solid var(--ninja-purple);
-            color: var(--ninja-cyan);
-            padding: 8px 16px;
+            display: inline-block;
+            background: rgba(0,212,255,0.1);
+            border: 1px solid rgba(0,212,255,0.3);
+            color: #00d4ff;
+            padding: 0.5rem 1rem;
             border-radius: 20px;
             font-size: 0.9rem;
         }
-        .cta {
-            display: inline-flex;
-            gap: 20px;
-            margin-top: 30px;
-        }
-        .btn {
-            padding: 16px 35px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
-            border: 2px solid;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, var(--ninja-purple), #5a189a);
-            border-color: var(--ninja-purple);
-            color: white;
-        }
-        .btn-secondary {
-            background: transparent;
-            border-color: var(--ninja-cyan);
-            color: var(--ninja-cyan);
-        }
-        .btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px var(--ninja-purple);
-        }
-        .section {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 80px 20px;
-        }
+        
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin: 40px 0;
+            gap: 2rem;
+            margin: 3rem 0;
         }
+        
         .feature {
             background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(123, 44, 191, 0.2);
+            border: 1px solid rgba(255,255,255,0.06);
             border-radius: 16px;
-            padding: 30px;
+            padding: 2rem;
             transition: transform 0.3s;
         }
+        
         .feature:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(123, 44, 191, 0.3);
         }
+        
         .feature h3 {
-            color: var(--ninja-cyan);
-            margin-bottom: 15px;
+            color: #00d4ff;
+            margin-bottom: 1rem;
             font-size: 1.3rem;
         }
+        
         .feature p {
             color: #a0a0c0;
             line-height: 1.6;
-            font-size: 0.95rem;
         }
+        
+        .cta {
+            text-align: center;
+            margin: 3rem 0;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin: 0 0.5rem;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        
         .demo-box {
             background: rgba(0,0,0,0.3);
-            border: 1px solid var(--ninja-purple);
+            border: 1px solid rgba(0,212,255,0.2);
             border-radius: 12px;
-            padding: 30px;
+            padding: 2rem;
             font-family: 'Courier New', monospace;
-            margin: 40px 0;
+            margin: 2rem 0;
         }
+        
         .demo-box .prompt {
-            color: var(--ninja-green);
+            color: #00ff88;
+            margin-bottom: 1rem;
         }
+        
         .demo-box .response {
-            color: var(--ninja-cyan);
-            margin-top: 15px;
+            color: #00d4ff;
         }
+        
         footer {
             text-align: center;
-            padding: 50px 20px;
+            padding: 3rem 0;
             color: #606080;
             font-size: 0.9rem;
         }
-        .ascii-art {
-            font-family: monospace;
-            white-space: pre;
-            text-align: center;
-            color: var(--ninja-cyan);
-            margin: 30px 0;
-            font-size: 12px;
-        }
+        
         @media (max-width: 768px) {
-            .hero h1 { font-size: 2.5rem; }
-            .hero { padding: 60px 20px; }
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="hero">
-        <div class="hero-content">
-            <h1>🥷 NINJA AGENT</h1>
+    <header>
+        <div class="hero">
+            <h1>🥷 NinjaAgent</h1>
             <p>AI-Powered Autonomous Trading Assistant for Injective Protocol</p>
             <div class="tag-container">
-                <span class="tag">🤖 NVIDIA Qwen AI</span>
-                <span class="tag">⛓ INJECTIVE BLOCKCHAIN</span>
-                <span class="tag">📱 TELEGRAM BOT</span>
-            </div>
-            <div class="cta">
-                <a href="https://github.com/salsabila2507/ninjaagent" class="btn btn-primary">🐙 VIEW CODE</a>
-                <a href="https://salsabila2507.github.io/ninjaagent/demo" class="btn btn-secondary">🎬 DEMO VIDEO</a>
+                <span class="tag">🤖 NVIDIA AI</span>
+                <span class="tag">⛓ Injective Protocol</span>
+                <span class="tag">📱 Telegram Bot</span>
             </div>
         </div>
-    </div>
+    </header>
 
-    <div class="section">
+    <div class="container">
         <div class="features">
             <div class="feature">
-                <h3>⚔️ NINJA COMMANDS</h3>
-                <p>Control your trades with natural language: "Buy 10 INJ at market price" or "Set stop-loss at $18". AI interprets your intent and executes instantly on Injective Protocol.</p>
+                <h3>🗣 Natural Language Trading</h3>
+                <p>Trade with simple commands like "Buy 10 INJ at market price" or "Set stop-loss at $20". No complex charts or order forms.</p>
             </div>
             <div class="feature">
-                <h3>⚡ INJECTIVE POWER</h3>
-                <p>Direct blockchain integration with real-time order execution. Zero-latency trading on the fastest DEX, powered by Injective's blazing-fast network.</p>
+                <h3>⚡ Injective Protocol</h3>
+                <p>Direct blockchain integration for instant trade execution and real-time market data.</p>
             </div>
             <div class="feature">
-                <h3>🧠 QWEN AI ENGINE</h3>
-                <p>NVIDIA's Qwen Coder LLM parses complex trading commands into precise API calls. Natural language becomes executable strategy.</p>
+                <h3>🤖 NVIDIA AI Parser</h3>
+                <p>Powered by Qwen Coder LLM to accurately understand and parse natural language trading commands.</p>
+            </div>
+            <div class="feature">
+                <h3>📱 Telegram Integration</h3>
+                <p>Get real-time trading signals and execute trades directly from Telegram.</p>
+            </div>
+            <div class="feature">
+                <h3>📊 Technical Analysis</h3>
+                <p>RSI, MACD, and Bollinger Bands analysis with automated signal generation.</p>
+            </div>
+            <div class="feature">
+                <h3>🛡 Risk Management</h3>
+                <p>Built-in stop-loss, take-profit, and position size controls to protect your portfolio.</p>
             </div>
         </div>
-    </div>
 
-    <div class="section">
-        <h2 style="text-align:center; font-size:2.5rem; margin-bottom:30px; color:var(--ninja-cyan)">🥷 LIVE DEMO</h2>
+        <div class="cta">
+            <a href="https://github.com/salsabila2507/ninjaagent" class="btn">🚀 GitHub Repo</a>
+            <a href="#" class="btn">📹 Demo Video</a>
+        </div>
+
         <div class="demo-box">
-            <div class="prompt">$ ninjaagent "Monitor BTC, alert me when it drops 10%"</div>
+            <div class="prompt">$ ninjaagent "Buy 10 INJ at market, stop loss at $18"</div>
             <div class="response">
-> 🎯 Command parsed: Monitor BTC price<br>
-> ⚡ Alert set: BTC price change > 10%<br>
-> 📡 Real-time data: BTC $62,420 → $58,980 (-5.5%)<br>
-> 🚨 Alert triggered! Price dropped 10% in 2 minutes<br>
-> 📈 Action: Buy order executed, 0.5 BTC @ $58,980
+> Parsed: {"action": "buy", "asset": "INJ", "amount": 10, "price": "market", "stop_loss": 18}<br>
+> Executing trade on Injective Protocol...<br>
+> ✅ Order filled: 10 INJ @ $24.50<br>
+> Stop-loss set at $18.00<br>
+> Portfolio updated: +10 INJ, total value: $245.00
             </div>
-        </div>
-    </div>
-
-    <div class="section" style="text-align:center;">
-        <h2 style="font-size:2.5rem; margin-bottom:30px; color:var(--ninja-cyan)">⚔️ TECH STACK</h2>
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:20px; margin:30px 0;">
-            <span style="background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.3); padding:15px 25px; border-radius:12px; color:var(--ninja-cyan);">Python + FastAPI</span>
-            <span style="background:rgba(123,44,191,0.1); border:1px solid rgba(123,44,191,0.3); padding:15px 25px; border-radius:12px; color:var(--njective-purple);">Next.js + Tailwind</span>
-            <span style="background:rgba(255,56,96,0.1); border:1px solid rgba(255,56,96,0.3); padding:15px 25px; border-radius:12px; color:var(--ninja-red);">NVIDIA AI (Qwen)</span>
-            <span style="background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.3); padding:15px 25px; border-radius:12px; color:var(--ninja-green);">Injective Protocol</span>
         </div>
     </div>
 
     <footer>
-        <div class="ascii-art">
-    ⚔️  NINJA AGENT v1.0 ⚔️
-   /\\              /\\
-  /  \\            /  \\
- /    \\          /    \\
-/______\\________/______\\
-|                    |
-|   🥷🥷🥷 NINJA 🥷🥷🥷   |
-|____________________|
-|   ⛓  INJECTIVE   ⚡  |
-|____________________|
-        </div>
         <p>🥷 NinjaAgent · Built for Injective Solo AI Builder Sprint 2026</p>
-        <p style="margin-top:15px;"><a href="https://github.com/salsabila2507/ninjaagent" style="color:var(--ninja-cyan);">🐙 GitHub</a> · <a href="https://salsabila2507.github.io/ninjaagent/demo" style="color:var(--ninja-cyan);">🎬 Demo Video</a> · <a href="https://salsabila2507.github.io/ninjaagent/docs" style="color:var(--ninja-cyan);">📚 Docs</a></p>
+        <p style="margin-top:10px;">
+            <a href="https://github.com/salsabila2507/ninjaagent" style="color:#00d4ff;">GitHub</a> · 
+            <a href="#" style="color:#00d4ff;">Demo Video</a> · 
+            <a href="#" style="color:#00d4ff;">Docs</a>
+        </p>
     </footer>
 </body>
 </html>
