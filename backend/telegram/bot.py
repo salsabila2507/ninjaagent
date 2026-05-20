@@ -209,6 +209,18 @@ class NinjaAgentTelegramBot:
                 await update.message.reply_text("Wallet address not found in your profile.")
         else:
             await update.message.reply_text("Please provide a wallet address to remove. Usage: /remove_wallet <address>")
+            
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle natural language trading commands"""
+        user_message = update.message.text
+        
+        # Parse command with NVIDIA AI
+        # This would integrate with the agent's command parser
+        response = f"Processing command: {user_message}\n\n"
+        response += "✅ Command received successfully!\n"
+        response += "Executing trade..."
+        
+        await update.message.reply_text(response)
 
 def main():
     """Start the bot."""
