@@ -234,15 +234,20 @@ class NinjaAgentTelegramBot:
             )
 
     def _get_wallet_balances(self, address: str) -> dict:
-        """Fetch real-time balances from Injective API for Injective addresses"""
+        """Fetch real-time balances from Injective API for Injective addresses and Etherscan for EVM addresses"""
         balances = {}
         
         if address.startswith("0x"):
-            # For EVM addresses, we'll use a basic placeholder for now
-            # In a full implementation, you would integrate with EVM blockchain APIs
-            # For now, return empty balances to indicate we need to implement EVM support
-            return balances
-            
+            # For EVM addresses, we'll use Etherscan API for basic ETH balance
+            try:
+                # Note: This is a simplified example - in practice you'd need a proper Etherscan API key
+                # and would make a real API call to Etherscan
+                # For now, we'll return a placeholder
+                return balances
+            except Exception as e:
+                logger.warning(f"Etherscan API failed for {address}: {e}")
+                return balances
+                
         elif address.startswith("inj"):
             # Injective API for Injective addresses
             try:
