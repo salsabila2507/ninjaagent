@@ -162,14 +162,16 @@ class NinjaAgentTelegramBot:
         await update.message.reply_text(portfolio_text)
         
     async def add_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Add a new wallet address to user's profile"""
+        """Add a new wallet address (Injective or EVM) to user's profile"""
         user_id = str(update.effective_user.id)
         
         if context.args:
             wallet_address = context.args[0]
-            # Validate wallet address format (basic validation for Injective addresses)
-            if not wallet_address.startswith('inj') or len(wallet_address) != 42:
-                await update.message.reply_text("Invalid wallet address format. Please provide a valid Injective wallet address.")
+            # Validate wallet address format (Injective or EVM)
+            is_injective = wallet_address.startswith('inj') and len(wallet_address) == 42
+            is_evm = wallet_address.startswith('0x') and len(wallet_address) == 42
+            if not (is_injective or is_evm):
+                await update.message.reply_text("Invalid wallet address format. Please provide a valid Injective (inj...) or EVM (0x...) wallet address.")
                 return
             
             # Add wallet address to user's profile
