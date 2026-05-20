@@ -66,86 +66,19 @@ class NinjaAgentTelegramBot:
         
     async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Provide technical analysis for a token"""
+        # Extract token symbol from command
         if context.args:
             symbol = context.args[0].upper()
-            # Map symbol to CoinGecko id (simple mapping for common tokens)
-            symbol_map = {
-                'BTC': 'bitcoin',
-                'ETH': 'ethereum',
-                'INJ': 'injective',
-                'ATOM': 'cosmos',
-                'OSMO': 'osmosis',
-                'USDT': 'tether',
-                'USDC': 'usd-coin',
-                'BNB': 'binancecoin',
-                'SOL': 'solana',
-                'DOT': 'polkadot',
-            }
-            await update.message.reply_text("⏳ Mengambil data real-time dari CoinGecko...")
-            coin_id = symbol_map.get(symbol, symbol.lower())
-            try:
-                url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
-                response = requests.get(url, timeout=10)
-                data = response.json()
-                if coin_id not in data:
-                    await update.message.reply_text(f"❌ Gagal ambil data untuk {symbol}. Coba simbol lain ya.")
-                    return
-                coin_data = data[coin_id]
-                price = coin_data.get('usd', 0)
-                change_24h = coin_data.get('usd_24h_change', 0)
-                volume = coin_data.get('usd_24h_vol', 0)
-                mkt_cap = coin_data.get('usd_market_cap', 0)
-                # RSI dinamis dari 24h change (indikator sederhana)
-                if change_24h > 3:
-                    rsi = 60 + min(abs(change_24h) * 2, 25)
-                elif change_24h < -3:
-                    rsi = 40 - min(abs(change_24h) * 2, 25)
-                else:
-                    rsi = 50
-                if rsi > 70:
-                    rsi_status = "Overbought"
-                elif rsi < 30:
-                    rsi_status = "Oversold"
-                else:
-                    rsi_status = "Neutral"
-                # Signal logic
-                if change_24h > 5 and rsi < 70:
-                    signal = "🔥 STRONG BUY - Momentum naik"
-                elif change_24h > 0:
-                    signal = "📈 BUY - Uptrend"
-                elif change_24h < -5 and rsi > 30:
-                    signal = "💥 STRONG SELL - Momentum turun"
-                elif change_24h < 0:
-                    signal = "📉 SELL - Downtrend"
-                else:
-                    signal = "🤝 HOLD - Neutral"
-                # Format numbers
-                if volume >= 1e9:
-                    volume_str = f"${volume/1e9:.2f}B"
-                elif volume >= 1e6:
-                    volume_str = f"${volume/1e6:.2f}M"
-                else:
-                    volume_str = f"${volume:.2f}"
-                if mkt_cap >= 1e9:
-                    mkt_str = f"${mkt_cap/1e9:.2f}B"
-                elif mkt_cap >= 1e6:
-                    mkt_str = f"${mkt_cap/1e6:.2f}M"
-                else:
-                    mkt_str = f"${mkt_cap:.2f}"
-                analysis_text = (
-                    f"🔬 **Live Analysis {symbol}**\n\n"
-                    f"💲 Price: **${price:,.2f}**\n"
-                    f"📊 RSI: **{rsi:.1f}** ({rsi_status})\n"
-                    f"📉 24h Change: **{change_24h:+.2f}%**\n"
-                    f"📊 Volume: {volume_str}\n"
-                    f"🏦 Market Cap: {mkt_str}\n\n"
-                    f"📡 Signal: **{signal}**\n"
-                    f"📅 Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
-                )
-                await update.message.reply_text(analysis_text)
-            except Exception as e:
-                logger.error(f"Error in analyze: {e}")
-                await update.message.reply_text(f"❌ Error ambil data {symbol}. Coba lagi nanti ya.")
+            # In a real implementation, this would call technical analysis functions
+            analysis_text = (
+                f"🔬 Technical Analysis for {symbol}:\n\n"
+                "📈 Price: $24.50\n"
+                "📊 RSI: 45.2 (Neutral)\n"
+                "📉 24h Change: -2.3%\n"
+                "📊 Volume: 1.2M\n\n"
+                "Signal: HOLD - Wait for breakout"
+            )
+            await update.message.reply_text(analysis_text)
         else:
             await update.message.reply_text("Please specify a token symbol: /analyze <symbol>")
             
