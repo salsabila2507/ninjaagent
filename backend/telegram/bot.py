@@ -72,7 +72,7 @@ class NinjaAgentTelegramBot:
             symbol_map = {
                 'BTC': 'bitcoin',
                 'ETH': 'ethereum',
-                'INJ': 'injective',
+                'INJ': 'injective-protocol',  # Fixed mapping for Injective
                 'ATOM': 'cosmos',
                 'OSMO': 'osmosis',
                 'USDT': 'tether',
