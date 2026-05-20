@@ -65,7 +65,7 @@ class NinjaAgentTelegramBot:
         )
         await update.message.reply_text(signals_text)
         
-async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Provide technical analysis for a token"""
         if context.args:
             symbol = context.args[0].upper()
@@ -161,7 +161,7 @@ async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         await update.message.reply_text(portfolio_text)
         
-async def add_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def add_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Add a new wallet address to user's profile"""
         user_id = str(update.effective_user.id)
         
