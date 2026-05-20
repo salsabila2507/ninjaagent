@@ -151,15 +151,178 @@ class NinjaAgentTelegramBot:
             await update.message.reply_text("Please specify a token symbol: /analyze <symbol>")
             
     async def portfolio(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Show portfolio status"""
-        portfolio_text = (
-            "💼 Your Portfolio:\n\n"
-            "INJ: 10.5 tokens ($257.25)\n"
-            "ATOM: 2.1 tokens ($52.50)\n"
-            "OSMO: 15.0 tokens ($30.00)\n\n"
-            "Total Value: $339.75"
-        )
-        await update.message.reply_text(portfolio_text)
+        """Show real-time portfolio status using Arkham API or fallback to CoinGecko"""
+        user_id = str(update.effective_user.id)
+        wallets = get_user_wallets(user_id)
+        
+        if not wallets:
+            await update.message.reply_text(
+                "💼 Your Portfolio:\n\n"
+                "You haven't added any wallet addresses yet.\n"
+                "Use /add_wallet <address> to add your wallet.\n\n"
+                "Supported formats:\n"
+                "• Injective: inj...\n"
+                "• EVM: 0x..."
+            )
+            return
+        
+        await update.message.reply_text("⏳ Fetching real-time portfolio data...")
+        
+        # Get all tokens from all wallets and aggregate
+        all_balances = {}
+        wallet_count = 0
+        
+        for wallet_address in wallets:
+            try:
+                balances = self._get_wallet_balances(wallet_address)
+                if balances:
+                    wallet_count += 1
+                    for symbol, amount in balances.items():
+                        if symbol in all_balances:
+                            all_balances[symbol] += amount
+                        else:
+                            all_balances[symbol] = amount
+            except Exception as e:
+                logger.error(f"Error fetching portfolio for {wallet_address}: {e}")
+                continue
+        
+        if not all_balances or wallet_count == 0:
+            await update.message.reply_text(
+                "❌ Could not fetch portfolio data.\n"
+                "The blockchain APIs may be temporarily unavailable.\n"
+                "Please try again later."
+            )
+            return
+        
+        # Get current prices for each token
+        try:
+            token_symbols = list(all_balances.keys())
+            token_ids = [self._symbol_to_coingecko_id(s) for s in token_symbols]
+            ids_param = ",".join(token_ids)
+            
+            url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids_param}&vs_currencies=usd"
+            response = requests.get(url, timeout=15)
+            data = response.json()
+            
+            # Format portfolio
+            lines = ["💼 Your Portfolio (Real-time)\n"]
+            total_value = 0
+            
+            for symbol in token_symbols:
+                coingecko_id = self._symbol_to_coingecko_id(symbol)
+                amount = all_balances[symbol]
+                
+                price_info = data.get(coingecko_id, {})
+                price = price_info.get("usd", 0) if price_info else 0
+                value = amount * price
+                total_value += value
+                
+                if value > 0:
+                    lines.append(f"{symbol}: {amount:.4f} (~${value:,.2f})")
+            
+            lines.append(f"\n💰 Total Value: ${total_value:,.2f}")
+            lines.append(f"📅 Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+            
+            portfolio_text = "\n".join(lines)
+            await update.message.reply_text(portfolio_text)
+        except Exception as e:
+            logger.error(f"Error fetching prices for portfolio: {e}")
+            await update.message.reply_text(
+                "❌ Error fetching real-time portfolio data.\n"
+                "Showing approximate balances only:\n\n" + 
+                "\n".join([f"{k}: {v:.4f}" for k, v in all_balances.items()])
+            )
+
+    def _get_wallet_balances(self, address: str) -> dict:
+        """Fetch real-time balances from Arkham API (EVM) or CoinGecko/Injective API"""
+        balances = {}
+        
+        if address.startswith("0x"):
+            # Try Arkham API for EVM addresses
+            try:
+                api_key = os.getenv("ARKHAM_API_KEY")
+                if api_key:
+                    url = f"https://api.arkm.com/balances/address/{address}"
+                    headers = {"API-Key": api_key}
+                    response = requests.get(url, headers=headers, timeout=15)
+                    if response.status_code == 200:
+                        data = response.json()
+                        for item in data.get("balances", []):
+                            symbol = item.get("token", {}).get("symbol", "")
+                            amount = item.get("balance", 0)
+                            if symbol and amount > 0:
+                                balances[symbol.upper()] = amount
+                        return balances
+            except Exception as e:
+                logger.warning(f"Arkham API failed for {address}: {e}")
+            
+            # Fallback for EVM tokens via Alchemy (example)
+            # In production, you'd use a proper ETH node or data provider
+            
+        elif address.startswith("inj"):
+            # Injective API for Injective addresses
+            try:
+                url = f"https://api.injective.network/cosmos/bank/v1beta1/balances/{address}"
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    for bal in data.get("balances", []):
+                        denom = bal.get("denom", "")
+                        amount = float(bal.get("amount", 0))
+                        # Convert denom to symbol (simplified mapping)
+                        symbol = self._denom_to_symbol(denom)
+                        if symbol and amount > 0:
+                            # Adjust for decimal places (e.g., INJ has 18 decimals)
+                            decimals = self._get_token_decimals(symbol)
+                            adjusted_amount = amount / (10 ** decimals)
+                            if adjusted_amount > 0:
+                                balances[symbol] = adjusted_amount
+                    return balances
+            except Exception as e:
+                logger.warning(f"Injective API failed for {address}: {e}")
+        
+        return balances
+
+    def _symbol_to_coingecko_id(self, symbol: str) -> str:
+        """Map token symbol to CoinGecko ID"""
+        mapping = {
+            "INJ": "injective-protocol",
+            "ATOM": "cosmos",
+            "OSMO": "osmosis",
+            "ETH": "ethereum",
+            "BTC": "bitcoin",
+            "BNB": "binancecoin",
+            "SOL": "solana",
+            "DOT": "polkadot",
+            "USDT": "tether",
+            "USDC": "usd-coin"
+        }
+        return mapping.get(symbol.upper(), symbol.lower())
+
+    def _denom_to_symbol(self, denom: str) -> str:
+        """Map Injective denom to symbol"""
+        if denom == "inj":
+            return "INJ"
+        elif "uatom" in denom:
+            return "ATOM"
+        elif "uosmo" in denom:
+            return "OSMO"
+        elif denom == "uusdt":
+            return "USDT"
+        elif denom == "uusdc":
+            return "USDC"
+        return denom.upper()
+
+    def _get_token_decimals(self, symbol: str) -> int:
+        """Get decimal places for a token"""
+        decimals = {
+            "INJ": 18,
+            "ATOM": 6,
+            "OSMO": 6,
+            "USDT": 6,
+            "USDC": 6
+        }
+        return decimals.get(symbol.upper(), 6)
         
     async def add_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Add a new wallet address (Injective or EVM) to user's profile"""
