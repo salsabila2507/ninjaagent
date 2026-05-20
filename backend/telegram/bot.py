@@ -11,6 +11,7 @@ from backend.injective.client import get_injective_client
 import json
 from datetime import datetime
 import requests
+from backend.core.user import add_wallet_address, get_user_wallets, remove_wallet_address, wallet_address_exists
 
 # Setup logging
 logging.basicConfig(
@@ -64,7 +65,7 @@ class NinjaAgentTelegramBot:
         )
         await update.message.reply_text(signals_text)
         
-    async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Provide technical analysis for a token"""
         if context.args:
             symbol = context.args[0].upper()
@@ -160,17 +161,54 @@ class NinjaAgentTelegramBot:
         )
         await update.message.reply_text(portfolio_text)
         
-    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle natural language trading commands"""
-        user_message = update.message.text
+async def add_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Add a new wallet address to user's profile"""
+        user_id = str(update.effective_user.id)
         
-        # Parse command with NVIDIA AI
-        # This would integrate with the agent's command parser
-        response = f"Processing command: {user_message}\n\n"
-        response += "✅ Command received successfully!\n"
-        response += "Executing trade..."
+        if context.args:
+            wallet_address = context.args[0]
+            # Validate wallet address format (basic validation for Injective addresses)
+            if not wallet_address.startswith('inj') or len(wallet_address) != 42:
+                await update.message.reply_text("Invalid wallet address format. Please provide a valid Injective wallet address.")
+                return
+            
+            # Add wallet address to user's profile
+            result = add_wallet_address(user_id, wallet_address)
+            if result:
+                await update.message.reply_text(f"Wallet address {wallet_address} added successfully!")
+            else:
+                await update.message.reply_text("Failed to add wallet address. Please try again.")
+        else:
+            await update.message.reply_text("Please provide a wallet address to add. Usage: /add_wallet <address>")
+
+    async def my_wallets(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """List user's wallet addresses"""
+        user_id = str(update.effective_user.id)
+        wallets = get_user_wallets(user_id)
         
-        await update.message.reply_text(response)
+        if wallets:
+            wallet_list = "\\n".join(wallets)
+            await update.message.reply_text(f"Your wallet addresses:\\n{wallet_list}")
+        else:
+            await update.message.reply_text("You haven't added any wallet addresses yet. Use /add_wallet <address> to add one.")
+
+    async def remove_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Remove a wallet address from user's profile"""
+        user_id = str(update.effective_user.id)
+        
+        if context.args:
+            wallet_address = context.args[0]
+            # Check if wallet address exists for this user
+            if wallet_address_exists(user_id, wallet_address):
+                result = remove_wallet_address(user_id, wallet_address)
+                if result:
+                    await update.message.reply_text(f"Wallet address {wallet_address} removed successfully!")
+                else:
+                    await update.message.reply_text("Failed to remove wallet address. Please try again.")
+            else:
+                await update.message.reply_text("Wallet address not found in your profile.")
+        else:
+            await update.message.reply_text("Please provide a wallet address to remove. Usage: /remove_wallet <address>")
 
 def main():
     """Start the bot."""
@@ -186,6 +224,10 @@ def main():
     application.add_handler(CommandHandler("signals", bot.signals))
     application.add_handler(CommandHandler("analyze", bot.analyze))
     application.add_handler(CommandHandler("portfolio", bot.portfolio))
+    # Add new wallet command handlers
+    application.add_handler(CommandHandler("add_wallet", bot.add_wallet))
+    application.add_handler(CommandHandler("my_wallets", bot.my_wallets))
+    application.add_handler(CommandHandler("remove_wallet", bot.remove_wallet))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
     
     # Run the bot
