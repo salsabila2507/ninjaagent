@@ -234,30 +234,14 @@ class NinjaAgentTelegramBot:
             )
 
     def _get_wallet_balances(self, address: str) -> dict:
-        """Fetch real-time balances from Arkham API (EVM) or CoinGecko/Injective API"""
+        """Fetch real-time balances from Injective API for Injective addresses"""
         balances = {}
         
         if address.startswith("0x"):
-            # Try Arkham API for EVM addresses
-            try:
-                api_key = os.getenv("ARKHAM_API_KEY")
-                if api_key:
-                    url = f"https://api.arkm.com/balances/address/{address}"
-                    headers = {"API-Key": api_key}
-                    response = requests.get(url, headers=headers, timeout=15)
-                    if response.status_code == 200:
-                        data = response.json()
-                        for item in data.get("balances", []):
-                            symbol = item.get("token", {}).get("symbol", "")
-                            amount = item.get("balance", 0)
-                            if symbol and amount > 0:
-                                balances[symbol.upper()] = amount
-                        return balances
-            except Exception as e:
-                logger.warning(f"Arkham API failed for {address}: {e}")
-            
-            # Fallback for EVM tokens via Alchemy (example)
-            # In production, you'd use a proper ETH node or data provider
+            # For EVM addresses, we'll use a basic placeholder for now
+            # In a full implementation, you would integrate with EVM blockchain APIs
+            # For now, return empty balances to indicate we need to implement EVM support
+            return balances
             
         elif address.startswith("inj"):
             # Injective API for Injective addresses
