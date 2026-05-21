@@ -1,58 +1,60 @@
-import json
 import os
-from typing import Dict, List
+import json
+from typing import Dict, List, Optional
 
-# Simple JSON database for user wallet storage
-DB_FILE = 'user_wallets.json'
+# User data storage
+USER_DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data.json")
 
-def load_database() -> Dict:
-    """Load the user wallet database from file"""
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, 'r') as f:
+def _load_user_data() -> Dict:
+    """Load user data from JSON file"""
+    if os.path.exists(USER_DATA_FILE):
+        with open(USER_DATA_FILE, 'r') as f:
             return json.load(f)
-    return {"users": {}}
+    return {}
 
-def save_database(data: Dict) -> None:
-    """Save the user wallet database to file"""
-    with open(DB_FILE, 'w') as f:
+def _save_user_data(data: Dict):
+    """Save user data to JSON file"""
+    with open(USER_DATA_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
 def add_wallet_address(user_id: str, wallet_address: str) -> bool:
-    """Add a wallet address for a user"""
-    data = load_database()
-    
-    # Validate wallet address (basic validation)
-    if not wallet_address or len(wallet_address) < 20:
-        return False
-    
-    if user_id not in data["users"]:
-        data["users"][user_id] = {"wallets": []}
-    
-    if wallet_address not in data["users"][user_id]["wallets"]:
-        data["users"][user_id]["wallets"].append(wallet_address)
-        save_database(data)
+    """Add a wallet address to a user's profile"""
+    try:
+        data = _load_user_data()
+        if user_id not in data:
+            data[user_id] = {"wallets": []}
+        if "wallets" not in data[user_id]:
+            data[user_id]["wallets"] = []
+        if wallet_address not in data[user_id]["wallets"]:
+            data[user_id]["wallets"].append(wallet_address)
+            _save_user_data(data)
         return True
-    return False
+    except Exception as e:
+        print(f"Error adding wallet: {e}")
+        return False
+
+def remove_wallet_address(user_id: str, wallet_address: str) -> bool:
+    """Remove a wallet address from a user's profile"""
+    try:
+        data = _load_user_data()
+        if user_id in data and "wallets" in data[user_id]:
+            if wallet_address in data[user_id]["wallets"]:
+                data[user_id]["wallets"].remove(wallet_address)
+                _save_user_data(data)
+                return True
+        return False
+    except Exception as e:
+        print(f"Error removing wallet: {e}")
+        return False
 
 def get_user_wallets(user_id: str) -> List[str]:
     """Get all wallet addresses for a user"""
-    data = load_database()
-    if user_id in data["users"]:
-        return data["users"][user_id]["wallets"]
+    data = _load_user_data()
+    if user_id in data and "wallets" in data[user_id]:
+        return data[user_id]["wallets"]
     return []
-
-def remove_wallet_address(user_id: str, wallet_address: str) -> bool:
-    """Remove a wallet address for a user"""
-    data = load_database()
-    if user_id in data["users"] and wallet_address in data["users"][user_id]["wallets"]:
-        data["users"][user_id]["wallets"].remove(wallet_address)
-        save_database(data)
-        return True
-    return False
 
 def wallet_address_exists(user_id: str, wallet_address: str) -> bool:
     """Check if a wallet address exists for a user"""
-    data = load_database()
-    if user_id in data["users"]:
-        return wallet_address in data["users"][user_id]["wallets"]
-    return False
+    wallets = get_user_wallets(user_id)
+    return wallet_address in wallets

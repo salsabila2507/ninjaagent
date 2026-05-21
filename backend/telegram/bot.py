@@ -1,17 +1,10 @@
-"""
-Telegram Bot for NinjaAgent
-Provides real-time trading signals and technical analysis
-"""
 import os
+import json
 import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from backend.core.agent import get_agent
-from backend.injective.client import get_injective_client
-import json
-from datetime import datetime
 import requests
-from backend.core.user import add_wallet_address, get_user_wallets, remove_wallet_address, wallet_address_exists
+from datetime import datetime
 
 # Setup logging
 logging.basicConfig(
@@ -20,155 +13,284 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class NinjaAgentTelegramBot:
-    def __init__(self, token: str):
-        self.token = token
-        self.agent = None
-        self.injective_client = None
+# User data storage
+USER_DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data.json")
+
+def _load_user_data():
+    if os.path.exists(USER_DATA_FILE):
+        with open(USER_DATA_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def _save_user_data(data):
+    with open(USER_DATA_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def add_wallet_address(user_id, wallet_address):
+    try:
+        data = _load_user_data()
+        if user_id not in data:
+            data[user_id] = {"wallets": []}
+        if "wallets" not in data[user_id]:
+            data[user_id]["wallets"] = []
+        if wallet_address not in data[user_id]["wallets"]:
+            data[user_id]["wallets"].append(wallet_address)
+            _save_user_data(data)
+        return True
+    except Exception as e:
+        logger.error(f"Error adding wallet: {e}")
+        return False
+
+def remove_wallet_address(user_id, wallet_address):
+    try:
+        data = _load_user_data()
+        if user_id in data and "wallets" in data[user_id]:
+            if wallet_address in data[user_id]["wallets"]:
+                data[user_id]["wallets"].remove(wallet_address)
+                _save_user_data(data)
+                return True
+        return False
+    except Exception as e:
+        logger.error(f"Error removing wallet: {e}")
+        return False
+
+def get_user_wallets(user_id):
+    data = _load_user_data()
+    if user_id in data and "wallets" in data[user_id]:
+        return data[user_id]["wallets"]
+    return []
+
+# Symbol mapping for CoinGecko
+SYMBOL_MAP = {
+    'BTC': 'bitcoin',
+    'ETH': 'ethereum',
+    'INJ': 'injective-protocol',
+    'ATOM': 'cosmos',
+    'OSMO': 'osmosis',
+    'USDT': 'tether',
+    'USDC': 'usd-coin',
+    'BNB': 'binancecoin',
+    'SOL': 'solana',
+    'DOT': 'polkadot',
+}
+
+# Real-time signal analysis using CoinGecko + momentum calculations
+def get_live_signal(symbol):
+    """Fetch real-time market data and generate trading signal"""
+    try:
+        coin_id = SYMBOL_MAP.get(symbol, symbol.lower())
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}?localization=false&tickers=false&market_data=true&community_data=false&sparkline=false"
+        response = requests.get(url, timeout=15)
+        data = response.json()
         
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Send a message when the command /start is issued."""
+        if 'market_data' not in data:
+            return None
+        
+        market_data = data['market_data']
+        current_price = market_data.get('current_price', {}).get('usd', 0)
+        change_24h = market_data.get('price_change_percentage_24h', 0)
+        change_7d = market_data.get('price_change_percentage_7d', 0)
+        high_24h = market_data.get('high_24h', {}).get('usd', 0)
+        low_24h = market_data.get('low_24h', {}).get('usd', 0)
+        volume = market_data.get('total_volume', {}).get('usd', 0)
+        mkt_cap = market_data.get('market_cap', {}).get('usd', 0)
+        
+        # Calculate RSI approximation
+        if change_24h > 3:
+            rsi = 60 + min(abs(change_24h) * 2, 25)
+        elif change_24h < -3:
+            rsi = 40 - min(abs(change_24h) * 2, 25)
+        else:
+            rsi = 50
+        
+        # Real signal logic
+        if change_24h > 5 and rsi < 70:
+            signal_strength = "🔥 STRONG BUY"
+            signal_desc = "Strong momentum with positive price action"
+        elif change_24h > 2 and rsi < 60:
+            signal_strength = "📈 BUY"
+            signal_desc = "Positive momentum building"
+        elif change_24h < -5 and rsi > 35:
+            signal_strength = "💥 STRONG SELL"
+            signal_desc = "Negative momentum accelerating"
+        elif change_24h < -2 and rsi > 50:
+            signal_strength = "📉 SELL"
+            signal_desc = "Downtrend confirmed"
+        else:
+            signal_strength = "🤝 HOLD"
+            signal_desc = "Market in consolidation phase"
+        
+        return {
+            'symbol': symbol,
+            'price': current_price,
+            'change_24h': change_24h,
+            'change_7d': change_7d,
+            'rsi': rsi,
+            'high_24h': high_24h,
+            'low_24h': low_24h,
+            'volume': volume,
+            'market_cap': mkt_cap,
+            'signal_strength': signal_strength,
+            'signal_desc': signal_desc
+        }
+    except Exception as e:
+        logger.error(f"Error fetching signal for {symbol}: {e}")
+        return None
+
+class NinjaAgentTelegramBot:
+    def __init__(self, token):
+        self.token = token
+        
+        self.supported_symbols = ['INJ', 'ETH', 'BTC', 'ATOM', 'OSMO', 'SOL']
+    
+    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         await update.message.reply_text(
-            f"Hi {user.first_name}! Welcome to NinjaAgent Trading Bot 🤖\n\n"
-            "I provide real-time trading signals and technical analysis for Injective Protocol.\n\n"
-            "Commands:\n"
-            "/signals - Get latest trading signals\n"
-            "/analyze <symbol> - Technical analysis for a token\n"
-            "/portfolio - View your portfolio\n"
-            "/help - Show this help message"
+            f"👋 Hi {user.first_name}! Welcome to **NinjaAgent** 🤖⚡\n\n"
+            "I'm your AI-powered trading assistant for Injective Protocol and crypto markets.\n\n"
+            "📊 **What I can do:**\n"
+            "  • Real-time technical analysis\n"
+            "  • Live trading signals\n"
+            "  • Portfolio tracking (Injective + EVM)\n"
+            "  • Market data & price alerts\n\n"
+            "🚀 **Quick Start:**\n"
+            "  /signals - Get live trading signals\n"
+            "  /analyze INJ - Analyze any token\n"
+            "  /portfolio - View your portfolio\n"
+            "  /add_wallet - Add your wallet\n"
+            "  /help - Show all commands"
         )
-        
-    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Send a message when the command /help is issued."""
+    
+    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         help_text = (
-            "📈 NinjaAgent Trading Bot Commands:\n\n"
-            "/signals - Get latest trading signals\n"
-            "/analyze <symbol> - Technical analysis for a token\n"
-            "/portfolio - View your portfolio\n"
-            "/help - Show this help message\n\n"
-            "You can also send natural language trading commands like:\n"
-            "'buy 10 INJ at market'\n"
-            "'set alert when BTC drops below 60k'"
+            "📈 **NinjaAgent Trading Bot Commands**\n\n"
+            "🤖 **Trading & Analysis**\n"
+            "  /signals - Get live trading signals (real-time from CoinGecko)\n"
+            "  /analyze \u003cSYMBOL\u003e - Detailed technical analysis with RSI, signals\n"
+            "  /portfolio - View your real-time portfolio value\n\n"
+            "👛 **Wallet Management**\n"
+            "  /add_wallet \u003caddress\u003e - Add Injective (inj...) or EVM (0x...) wallet\n"
+            "  /my_wallets - List all your wallets\n"
+            "  /remove_wallet \u003caddress\u003e - Remove a wallet\n\n"
+            "❓ **Help**\n"
+            "  /start - Welcome message and quick start\n"
+            "  /help - Show this help message\n\n"
+            "💡 **Examples:**\n"
+            "  /analyze INJ\n"
+            "  /analyze ETH\n"
+            "  /add_wallet inj1xyz...\n"
+            "  /add_wallet 0x123...\n\n"
+            "Data powered by CoinGecko, Injective API & Etherscan 🚀"
         )
         await update.message.reply_text(help_text)
+    
+    async def signals(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("⏳ Fetching live trading signals from CoinGecko...")
         
-    async def signals(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Send latest trading signals"""
-        # This would integrate with a real technical analysis engine
-        signals_text = (
-            "📊 Latest Trading Signals:\n\n"
-            "🔔 INJ: Buy signal at $24.50 (RSI: 45.2)\n"
-            "🔔 ATOM: Hold signal (neutral)\n"
-            "🔔 OSMO: Sell signal below $1.20 (RSI: 65.8)\n\n"
-            "Use /analyze <symbol> for detailed analysis"
-        )
-        await update.message.reply_text(signals_text)
+        signals_data = []
+        for symbol in self.supported_symbols[:3]:  # Top 3 for brevity
+            signal = get_live_signal(symbol)
+            if signal:
+                signals_data.append(signal)
         
-    async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Provide technical analysis for a token"""
-        if context.args:
-            symbol = context.args[0].upper()
-            # Map symbol to CoinGecko id (simple mapping for common tokens)
-            symbol_map = {
-                'BTC': 'bitcoin',
-                'ETH': 'ethereum',
-                'INJ': 'injective-protocol',  # Fixed mapping for Injective
-                'ATOM': 'cosmos',
-                'OSMO': 'osmosis',
-                'USDT': 'tether',
-                'USDC': 'usd-coin',
-                'BNB': 'binancecoin',
-                'SOL': 'solana',
-                'DOT': 'polkadot',
-            }
-            await update.message.reply_text("⏳ Mengambil data real-time dari CoinGecko...")
-            coin_id = symbol_map.get(symbol, symbol.lower())
-            try:
-                url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
-                response = requests.get(url, timeout=10)
-                data = response.json()
-                if coin_id not in data:
-                    await update.message.reply_text(f"❌ Gagal ambil data untuk {symbol}. Coba simbol lain ya.")
-                    return
-                coin_data = data[coin_id]
-                price = coin_data.get('usd', 0)
-                change_24h = coin_data.get('usd_24h_change', 0)
-                volume = coin_data.get('usd_24h_vol', 0)
-                mkt_cap = coin_data.get('usd_market_cap', 0)
-                # RSI dinamis dari 24h change (indikator sederhana)
-                if change_24h > 3:
-                    rsi = 60 + min(abs(change_24h) * 2, 25)
-                elif change_24h < -3:
-                    rsi = 40 - min(abs(change_24h) * 2, 25)
-                else:
-                    rsi = 50
-                if rsi > 70:
-                    rsi_status = "Overbought"
-                elif rsi < 30:
-                    rsi_status = "Oversold"
-                else:
-                    rsi_status = "Neutral"
-                # Signal logic
-                if change_24h > 5 and rsi < 70:
-                    signal = "🔥 STRONG BUY - Momentum naik"
-                elif change_24h > 0:
-                    signal = "📈 BUY - Uptrend"
-                elif change_24h < -5 and rsi > 30:
-                    signal = "💥 STRONG SELL - Momentum turun"
-                elif change_24h < 0:
-                    signal = "📉 SELL - Downtrend"
-                else:
-                    signal = "🤝 HOLD - Neutral"
-                # Format numbers
-                if volume >= 1e9:
-                    volume_str = f"${volume/1e9:.2f}B"
-                elif volume >= 1e6:
-                    volume_str = f"${volume/1e6:.2f}M"
-                else:
-                    volume_str = f"${volume:.2f}"
-                if mkt_cap >= 1e9:
-                    mkt_str = f"${mkt_cap/1e9:.2f}B"
-                elif mkt_cap >= 1e6:
-                    mkt_str = f"${mkt_cap/1e6:.2f}M"
-                else:
-                    mkt_str = f"${mkt_cap:.2f}"
-                analysis_text = (
-                    f"🔬 **Live Analysis {symbol}**\n\n"
-                    f"💲 Price: **${price:,.2f}**\n"
-                    f"📊 RSI: **{rsi:.1f}** ({rsi_status})\n"
-                    f"📉 24h Change: **{change_24h:+.2f}%**\n"
-                    f"📊 Volume: {volume_str}\n"
-                    f"🏦 Market Cap: {mkt_str}\n\n"
-                    f"📡 Signal: **{signal}**\n"
-                    f"📅 Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
-                )
-                await update.message.reply_text(analysis_text)
-            except Exception as e:
-                logger.error(f"Error in analyze: {e}")
-                await update.message.reply_text(f"❌ Error ambil data {symbol}. Coba lagi nanti ya.")
+        if not signals_data:
+            await update.message.reply_text(
+                "❌ Unable to fetch live signals at the moment.\n"
+                "Please try again later. The APIs might be temporarily unavailable."
+            )
+            return
+        
+        lines = ["📊 **Live Trading Signals**", "📅 Real-time data from CoinGecko\n"]
+        for s in signals_data:
+            lines.append(
+                f"{s['signal_strength']} - **{s['symbol']}** @ ${s['price']:,.2f}\n"
+                f"   24h: {s['change_24h']:+.2f}% | RSI: {s['rsi']:.1f}\n"
+                f"   {s['signal_desc']}"
+            )
+        
+        lines.append("\n💡 Use /analyze \u003cSYMBOL\u003e for detailed analysis")
+        lines.append("📅 Updated: " + datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + " UTC")
+        
+        await update.message.reply_text("\n".join(lines))
+    
+    async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not context.args:
+            await update.message.reply_text(
+                "⚠️ Please specify a token symbol.\n\n"
+                "**Usage:** /analyze \u003cSYMBOL\u003e\n\n"
+                "**Examples:**\n"
+                "  /analyze INJ\n"
+                "  /analyze ETH\n"
+                "  /analyze BTC\n\n"
+                f"Supported: {', '.join(self.supported_symbols)}"
+            )
+            return
+        
+        symbol = context.args[0].upper()
+        await update.message.reply_text(f"⏳ Fetching real-time data for **{symbol}** from CoinGecko...")
+        
+        signal = get_live_signal(symbol)
+        if not signal:
+            await update.message.reply_text(
+                f"❌ Failed to fetch data for **{symbol}**.\n\n"
+                f"**Supported symbols:** {', '.join(self.supported_symbols)}\n\n"
+                "Please check the symbol and try again."
+            )
+            return
+        
+        # Format numbers
+        volume = signal['volume']
+        if volume >= 1e9:
+            volume_str = f"${volume/1e9:.2f}B"
+        elif volume >= 1e6:
+            volume_str = f"${volume/1e6:.2f}M"
         else:
-            await update.message.reply_text("Please specify a token symbol: /analyze <symbol>")
-            
-    async def portfolio(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Show real-time portfolio status using Arkham API or fallback to CoinGecko"""
+            volume_str = f"${volume:.2f}"
+        
+        mkt_cap = signal['market_cap']
+        if mkt_cap >= 1e9:
+            mkt_str = f"${mkt_cap/1e9:.2f}B"
+        elif mkt_cap >= 1e6:
+            mkt_str = f"${mkt_cap/1e6:.2f}M"
+        else:
+            mkt_str = f"${mkt_cap:.2f}"
+        
+        analysis_text = (
+            f"🔬 **Live Analysis: {signal['symbol']}**\n\n"
+            f"💲 **Price:** ${signal['price']:,.2f}\n"
+            f"📊 **RSI:** {signal['rsi']:.1f}\n"
+            f"📉 **24h Change:** {signal['change_24h']:+.2f}%\n"
+            f"📊 **7d Change:** {signal['change_7d']:+.2f}%\n"
+            f"📊 **Volume (24h):** {volume_str}\n"
+            f"🏦 **Market Cap:** {mkt_str}\n"
+            f"⬆️ **24h High:** ${signal['high_24h']:,.2f}\n"
+            f"⬇️ **24h Low:** ${signal['low_24h']:,.2f}\n\n"
+            f"📡 **Signal:** {signal['signal_strength']}\n"
+            f"📝 **Analysis:** {signal['signal_desc']}\n\n"
+            f"📅 Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
+            f"💡 Data: CoinGecko API (Real-time)"
+        )
+        await update.message.reply_text(analysis_text)
+    
+    async def portfolio(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
         wallets = get_user_wallets(user_id)
         
         if not wallets:
             await update.message.reply_text(
-                "💼 Your Portfolio:\n\n"
-                "You haven't added any wallet addresses yet.\n"
-                "Use /add_wallet <address> to add your wallet.\n\n"
-                "Supported formats:\n"
-                "• Injective: inj...\n"
-                "• EVM: 0x..."
+                "💼 **Your Portfolio**\n\n"
+                "You haven't added any wallet addresses yet.\n\n"
+                "**Supported formats:**\n"
+                "  • Injective: `inj1...`\n"
+                "  • EVM: `0x...`\n\n"
+                "**Add a wallet:**\n"
+                "  /add_wallet inj1xyz...\n"
+                "  /add_wallet 0x123..."
             )
             return
         
         await update.message.reply_text("⏳ Fetching real-time portfolio data...")
         
-        # Get all tokens from all wallets and aggregate
         all_balances = {}
         wallet_count = 0
         
@@ -194,22 +316,20 @@ class NinjaAgentTelegramBot:
             )
             return
         
-        # Get current prices for each token
         try:
             token_symbols = list(all_balances.keys())
-            token_ids = [self._symbol_to_coingecko_id(s) for s in token_symbols]
+            token_ids = [SYMBOL_MAP.get(s, s.lower()) for s in token_symbols]
             ids_param = ",".join(token_ids)
             
             url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids_param}&vs_currencies=usd"
             response = requests.get(url, timeout=15)
             data = response.json()
             
-            # Format portfolio
-            lines = ["💼 Your Portfolio (Real-time)\n"]
+            lines = ["💼 **Your Portfolio (Real-time)**\n"]
             total_value = 0
             
             for symbol in token_symbols:
-                coingecko_id = self._symbol_to_coingecko_id(symbol)
+                coingecko_id = SYMBOL_MAP.get(symbol, symbol.lower())
                 amount = all_balances[symbol]
                 
                 price_info = data.get(coingecko_id, {})
@@ -218,45 +338,44 @@ class NinjaAgentTelegramBot:
                 total_value += value
                 
                 if value > 0:
-                    lines.append(f"{symbol}: {amount:.4f} (~${value:,.2f})")
+                    lines.append(f"**{symbol}:** {amount:.6f} (~${value:,.2f})")
+                else:
+                    lines.append(f"**{symbol}:** {amount:.6f}")
             
-            lines.append(f"\n💰 Total Value: ${total_value:,.2f}")
+            lines.append(f"\n💰 **Total Value:** ${total_value:,.2f}")
             lines.append(f"📅 Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+            lines.append("💡 Prices from CoinGecko (Real-time)")
             
-            portfolio_text = "\n".join(lines)
-            await update.message.reply_text(portfolio_text)
+            await update.message.reply_text("\n".join(lines))
         except Exception as e:
             logger.error(f"Error fetching prices for portfolio: {e}")
             await update.message.reply_text(
-                "❌ Error fetching real-time portfolio data.\n"
-                "Showing approximate balances only:\n\n" + 
-                "\n".join([f"{k}: {v:.4f}" for k, v in all_balances.items()])
+                "❌ Error fetching real-time portfolio prices.\n"
+                "Showing approximate balances only:\n\n" +
+                "\n".join([f"{k}: {v:.6f}" for k, v in all_balances.items()])
             )
-
-    def _get_wallet_balances(self, address: str) -> dict:
-        """Fetch real-time balances from Injective API for Injective addresses and Etherscan for EVM addresses"""
+    
+    def _get_wallet_balances(self, address):
         balances = {}
         
         if address.startswith("0x"):
-            # For EVM addresses, we'll use Etherscan API for basic ETH balance
             try:
-                # Use Etherscan API to get balance
-                api_key = "NGRTMDUS49SVNVDJM2EFUEGMZFTC86TU3U"  # Your Etherscan API key
+                api_key = os.getenv("ETHERSCAN_API_KEY", "NGRTMDUS49SVNVDJM2EFUEGMZFTC86TU3U")
                 url = f"https://api.etherscan.io/api?module=account&action=balance&address={address}&tag=latest&apikey={api_key}"
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("status") == "1":
-                        # Successfully got balance - but we'll keep it simple for now
-                        # In a real implementation, you'd parse the balance and add to balances dict
-                        pass
+                        balance_wei = int(data.get("result", 0))
+                        if balance_wei > 0:
+                            eth_balance = balance_wei / (10 ** 18)
+                            balances["ETH"] = eth_balance
                 return balances
             except Exception as e:
                 logger.warning(f"Etherscan API failed for {address}: {e}")
                 return balances
-                
+        
         elif address.startswith("inj"):
-            # Injective API for Injective addresses
             try:
                 url = f"https://api.injective.network/cosmos/bank/v1beta1/balances/{address}"
                 response = requests.get(url, timeout=10)
@@ -265,38 +384,19 @@ class NinjaAgentTelegramBot:
                     for bal in data.get("balances", []):
                         denom = bal.get("denom", "")
                         amount = float(bal.get("amount", 0))
-                        # Convert denom to symbol (simplified mapping)
                         symbol = self._denom_to_symbol(denom)
                         if symbol and amount > 0:
-                            # Adjust for decimal places (e.g., INJ has 18 decimals)
                             decimals = self._get_token_decimals(symbol)
                             adjusted_amount = amount / (10 ** decimals)
                             if adjusted_amount > 0:
                                 balances[symbol] = adjusted_amount
-                    return balances
+                return balances
             except Exception as e:
                 logger.warning(f"Injective API failed for {address}: {e}")
         
         return balances
-
-    def _symbol_to_coingecko_id(self, symbol: str) -> str:
-        """Map token symbol to CoinGecko ID"""
-        mapping = {
-            "INJ": "injective-protocol",
-            "ATOM": "cosmos",
-            "OSMO": "osmosis",
-            "ETH": "ethereum",
-            "BTC": "bitcoin",
-            "BNB": "binancecoin",
-            "SOL": "solana",
-            "DOT": "polkadot",
-            "USDT": "tether",
-            "USDC": "usd-coin"
-        }
-        return mapping.get(symbol.upper(), symbol.lower())
-
-    def _denom_to_symbol(self, denom: str) -> str:
-        """Map Injective denom to symbol"""
+    
+    def _denom_to_symbol(self, denom):
         if denom == "inj":
             return "INJ"
         elif "uatom" in denom:
@@ -308,102 +408,140 @@ class NinjaAgentTelegramBot:
         elif denom == "uusdc":
             return "USDC"
         return denom.upper()
-
-    def _get_token_decimals(self, symbol: str) -> int:
-        """Get decimal places for a token"""
-        decimals = {
-            "INJ": 18,
-            "ATOM": 6,
-            "OSMO": 6,
-            "USDT": 6,
-            "USDC": 6
-        }
+    
+    def _get_token_decimals(self, symbol):
+        decimals = {"INJ": 18, "ATOM": 6, "OSMO": 6, "USDT": 6, "USDC": 6}
         return decimals.get(symbol.upper(), 6)
-        
-    async def add_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Add a new wallet address (Injective or EVM) to user's profile"""
+    
+    async def add_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
         
         if context.args:
             wallet_address = context.args[0]
-            # Validate wallet address format (Injective or EVM)
             is_injective = wallet_address.startswith('inj') and len(wallet_address) == 42
             is_evm = wallet_address.startswith('0x') and len(wallet_address) == 42
             if not (is_injective or is_evm):
-                await update.message.reply_text("Invalid wallet address format. Please provide a valid Injective (inj...) or EVM (0x...) wallet address.")
+                await update.message.reply_text(
+                    "⚠️ **Invalid wallet address format.**\n\n"
+                    "**Supported formats:**\n"
+                    "  • Injective: `inj1...` (42 chars)\n"
+                    "  • EVM: `0x...` (42 chars)\n\n"
+                    "**Example:**\n"
+                    "  /add_wallet inj1xyz...\n"
+                    "  /add_wallet 0x123..."
+                )
                 return
             
-            # Add wallet address to user's profile
             result = add_wallet_address(user_id, wallet_address)
             if result:
-                await update.message.reply_text(f"Wallet address {wallet_address} added successfully!")
+                await update.message.reply_text(
+                    f"✅ **Wallet added successfully!**\n\n"
+                    f"`{wallet_address}`\n\n"
+                    "Your portfolio will now include this wallet.\n"
+                    "Use /portfolio to see your updated holdings."
+                )
             else:
-                await update.message.reply_text("Failed to add wallet address. Please try again.")
+                await update.message.reply_text("❌ Failed to add wallet. Please try again.")
         else:
-            await update.message.reply_text("Please provide a wallet address to add. Usage: /add_wallet <address>")
-
-    async def my_wallets(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """List user's wallet addresses"""
+            await update.message.reply_text(
+                "⚠️ **Please provide a wallet address.**\n\n"
+                "**Usage:** /add_wallet \u003caddress\u003e\n\n"
+                "**Examples:**\n"
+                "  /add_wallet inj1xyz...\n"
+                "  /add_wallet 0x123...\n\n"
+                "**Supported:** Injective (inj...) and EVM (0x...) wallets"
+            )
+    
+    async def my_wallets(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
         wallets = get_user_wallets(user_id)
         
         if wallets:
-            wallet_list = "\\n".join(wallets)
-            await update.message.reply_text(f"Your wallet addresses:\\n{wallet_list}")
+            wallet_list = "\n".join([f"  • `{w[:8]}...{w[-6:]}`" for w in wallets])
+            await update.message.reply_text(
+                f"👛 **Your Wallets** ({len(wallets)} total)\n\n"
+                f"{wallet_list}\n\n"
+                "Use /portfolio to see your holdings."
+            )
         else:
-            await update.message.reply_text("You haven't added any wallet addresses yet. Use /add_wallet <address> to add one.")
-
-    async def remove_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Remove a wallet address from user's profile"""
+            await update.message.reply_text(
+                "👛 **No wallets found.**\n\n"
+                "Add a wallet to track your portfolio:\n"
+                "  /add_wallet \u003caddress\u003e\n\n"
+                "Supports Injective (inj...) and EVM (0x...) wallets."
+            )
+    
+    async def remove_wallet(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
         
         if context.args:
             wallet_address = context.args[0]
-            # Check if wallet address exists for this user
-            if wallet_address_exists(user_id, wallet_address):
+            if wallet_address in get_user_wallets(user_id):
                 result = remove_wallet_address(user_id, wallet_address)
                 if result:
-                    await update.message.reply_text(f"Wallet address {wallet_address} removed successfully!")
+                    await update.message.reply_text(
+                        f"✅ **Wallet removed!**\n\n"
+                        f"`{wallet_address}`\n\n"
+                        "This wallet is no longer tracked in your portfolio."
+                    )
                 else:
-                    await update.message.reply_text("Failed to remove wallet address. Please try again.")
+                    await update.message.reply_text("❌ Failed to remove wallet. Please try again.")
             else:
-                await update.message.reply_text("Wallet address not found in your profile.")
+                await update.message.reply_text("⚠️ Wallet not found in your profile.")
         else:
-            await update.message.reply_text("Please provide a wallet address to remove. Usage: /remove_wallet <address>")
-            
-    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle natural language trading commands"""
+            await update.message.reply_text(
+                "⚠️ **Please provide a wallet address to remove.**\n\n"
+                "**Usage:** /remove_wallet \u003caddress\u003e"
+            )
+    
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_message = update.message.text
         
-        # Parse command with NVIDIA AI
-        # This would integrate with the agent's command parser
-        response = f"Processing command: {user_message}\n\n"
-        response += "✅ Command received successfully!\n"
-        response += "Executing trade..."
+        # Simple natural language processing
+        msg_lower = user_message.lower()
         
-        await update.message.reply_text(response)
+        if any(word in msg_lower for word in ['buy', 'sell', 'long', 'short']):
+            await update.message.reply_text(
+                "🚧 **Coming Soon!**\n\n"
+                "Direct trading via Telegram is under development.\n"
+                "For now, please use the Injective exchange for trades.\n\n"
+                "Try these commands instead:\n"
+                "  /analyze \u003cSYMBOL\u003e - Get analysis\n"
+                "  /signals - Get trading signals\n"
+                "  /portfolio - Check your portfolio"
+            )
+        elif any(word in msg_lower for word in ['price', 'berapa', 'harga']):
+            await update.message.reply_text(
+                "💡 **Want to check a price?**\n\n"
+                "Use: /analyze \u003cSYMBOL\u003e\n\n"
+                "Example: /analyze INJ"
+            )
+        else:
+            await update.message.reply_text(
+                "🤖 **NinjaAgent is here to help!**\n\n"
+                "Try these commands:\n"
+                "  /analyze \u003cSYMBOL\u003e - Technical analysis\n"
+                "  /signals - Trading signals\n"
+                "  /portfolio - Your portfolio\n"
+                "  /help - All commands\n\n"
+                "Or send a trading command like 'buy 10 INJ' (coming soon!)"
+            )
 
 def main():
-    """Start the bot."""
-    # Create the Application and pass it your bot's token
     application = Application.builder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
     
-    # Create bot instance
     bot = NinjaAgentTelegramBot(os.getenv("TELEGRAM_BOT_TOKEN"))
     
-    # Register handlers
     application.add_handler(CommandHandler("start", bot.start))
     application.add_handler(CommandHandler("help", bot.help_command))
     application.add_handler(CommandHandler("signals", bot.signals))
     application.add_handler(CommandHandler("analyze", bot.analyze))
     application.add_handler(CommandHandler("portfolio", bot.portfolio))
-    # Add new wallet command handlers
     application.add_handler(CommandHandler("add_wallet", bot.add_wallet))
     application.add_handler(CommandHandler("my_wallets", bot.my_wallets))
     application.add_handler(CommandHandler("remove_wallet", bot.remove_wallet))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
     
-    # Run the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":

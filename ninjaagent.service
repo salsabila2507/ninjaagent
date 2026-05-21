@@ -1,0 +1,16 @@
+[Unit]
+Description=NinjaAgent Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/NinjaAgent
+Environment="PYTHONPATH=/root/NinjaAgent"
+Environment="TELEGRAM_BOT_TOKEN=8519702355:AAFdHDt_13r0Psn_uizxbaIXXHH0gCbYIpA"
+ExecStart=/usr/bin/python3 /root/NinjaAgent/backend/telegram/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
