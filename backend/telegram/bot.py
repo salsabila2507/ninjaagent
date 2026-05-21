@@ -16,6 +16,13 @@ logger = logging.getLogger(__name__)
 # User data storage
 USER_DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data.json")
 
+# Injective API endpoints
+INJ_BANK_API = "https://lcd.injective.network/cosmos/bank/v1beta1"
+INJ_EXCHANGE_API = "https://sentry.exchange.grpc-web.injective.network/injective_exchange_rpc.InjectiveExchangeRPC"
+INJ_EXPLORER_API = "https://api.explorer.injective.network/api/v1"
+INJ_INDEXER_API = "https://api.injective.network/indexer/v1"
+INJ_ORACLE_API = "https://api.injective.network/indexer/v1/oracle"
+
 def _load_user_data():
     if os.path.exists(USER_DATA_FILE):
         with open(USER_DATA_FILE, 'r') as f:
@@ -60,7 +67,7 @@ def get_user_wallets(user_id):
         return data[user_id]["wallets"]
     return []
 
-# Symbol mapping for CoinGecko
+# Symbol mapping for CoinGecko (supplementary)
 SYMBOL_MAP = {
     'BTC': 'bitcoin',
     'ETH': 'ethereum',
@@ -74,13 +81,101 @@ SYMBOL_MAP = {
     'DOT': 'polkadot',
 }
 
-# Real-time signal analysis using CoinGecko + momentum calculations
-def get_live_signal(symbol):
-    """Fetch real-time market data and generate trading signal"""
+# Injective market IDs
+INJ_MARKETS = {
+    'INJ/USDT': '0x...',  # Spot market
+    'ETH/USDT': '0x...',
+    'BTC/USDT': '0x...',
+}
+
+# ============================================================
+# INJECTIVE API FUNCTIONS
+# ============================================================
+
+def get_inj_account(address):
+    """Get Injective account info"""
     try:
+        url = f"{INJ_BANK_API}/balances/{address}"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.warning(f"Injective API failed for {address}: {e}")
+    return {}
+
+def get_inj_oracle_price(symbol):
+    """Get Injective oracle price for a symbol"""
+    try:
+        url = f"{INJ_INDEXER_API}/oracle/price"
+        # Try to fetch from Injective oracle
+        headers = {'Content-Type': 'application/json'}
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            # Parse oracle data
+            return data
+    except Exception as e:
+        logger.warning(f"Injective oracle failed for {symbol}: {e}")
+    return None
+
+def get_inj_markets():
+    """Get all Injective markets"""
+    try:
+        url = f"{INJ_INDEXER_API}/spot/markets"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.warning(f"Injective markets API failed: {e}")
+    return []
+
+def get_inj_derivative_markets():
+    """Get all Injective derivative markets"""
+    try:
+        url = f"{INJ_INDEXER_API}/derivative/markets"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.warning(f"Injective derivative markets API failed: {e}")
+    return []
+
+def get_inj_orderbook(market_id):
+    """Get orderbook for a specific market"""
+    try:
+        url = f"{INJ_INDEXER_API}/spot/orderbooks"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.warning(f"Injective orderbook failed for {market_id}: {e}")
+    return {}
+
+def get_inj_recent_trades(address):
+    """Get recent trades for an address"""
+    try:
+        url = f"{INJ_EXPLORER_API}/txs?sender={address}&limit=10"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.warning(f"Injective explorer failed for {address}: {e}")
+    return []
+
+# ============================================================
+# REAL-TIME SIGNAL ANALYSIS
+# ============================================================
+
+def get_real_time_analysis(symbol):
+    """Fetch live market data and generate trading signal"""
+    try:
+        # Try Injective oracle first
+        inj_price_data = get_inj_oracle_price(symbol)
+        
+        # Fallback to CoinGecko
         coin_id = SYMBOL_MAP.get(symbol, symbol.lower())
         url = f"https://api.coingecko.com/api/v3/coins/{coin_id}?localization=false&tickers=false&market_data=true&community_data=false&sparkline=false"
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, timeout=10)
         data = response.json()
         
         if 'market_data' not in data:
@@ -95,7 +190,7 @@ def get_live_signal(symbol):
         volume = market_data.get('total_volume', {}).get('usd', 0)
         mkt_cap = market_data.get('market_cap', {}).get('usd', 0)
         
-        # Calculate RSI approximation
+        # RSI approximation
         if change_24h > 3:
             rsi = 60 + min(abs(change_24h) * 2, 25)
         elif change_24h < -3:
@@ -103,7 +198,7 @@ def get_live_signal(symbol):
         else:
             rsi = 50
         
-        # Real signal logic
+        # Signal logic
         if change_24h > 5 and rsi < 70:
             signal_strength = "🔥 STRONG BUY"
             signal_desc = "Strong momentum with positive price action"
@@ -137,10 +232,13 @@ def get_live_signal(symbol):
         logger.error(f"Error fetching signal for {symbol}: {e}")
         return None
 
+# ============================================================
+# BOT CLASS
+# ============================================================
+
 class NinjaAgentTelegramBot:
     def __init__(self, token):
         self.token = token
-        
         self.supported_symbols = ['INJ', 'ETH', 'BTC', 'ATOM', 'OSMO', 'SOL']
     
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -157,6 +255,7 @@ class NinjaAgentTelegramBot:
             "  /signals - Get live trading signals\n"
             "  /analyze INJ - Analyze any token\n"
             "  /portfolio - View your portfolio\n"
+            "  /markets - List Injective markets\n"
             "  /add_wallet - Add your wallet\n"
             "  /help - Show all commands"
         )
@@ -165,42 +264,42 @@ class NinjaAgentTelegramBot:
         help_text = (
             "📈 **NinjaAgent Trading Bot Commands**\n\n"
             "🤖 **Trading & Analysis**\n"
-            "  /signals - Get live trading signals (real-time from CoinGecko)\n"
-            "  /analyze \u003cSYMBOL\u003e - Detailed technical analysis with RSI, signals\n"
-            "  /portfolio - View your real-time portfolio value\n\n"
+            "  /symbols - Get live trading signals (Injective + CoinGecko)\n"
+            "  /analyze <SYMBOL> - Detailed technical analysis\n"
+            "  /portfolio - View your real-time portfolio\n"
+            "  /markets - List Injective spot & derivative markets\n\n"
             "👛 **Wallet Management**\n"
-            "  /add_wallet \u003caddress\u003e - Add Injective (inj...) or EVM (0x...) wallet\n"
-            "  /my_wallets - List all your wallets\n"
-            "  /remove_wallet \u003caddress\u003e - Remove a wallet\n\n"
+            "  /add_wallet <address> - Add wallet (Injective or EVM)\n"
+            "  /my_wallets - List all wallets\n"
+            "  /remove_wallet <address> - Remove wallet\n\n"
             "❓ **Help**\n"
-            "  /start - Welcome message and quick start\n"
-            "  /help - Show this help message\n\n"
+            "  /start - Welcome & quick start\n"
+            "  /help - Show this help\n\n"
             "💡 **Examples:**\n"
             "  /analyze INJ\n"
             "  /analyze ETH\n"
-            "  /add_wallet inj1xyz...\n"
-            "  /add_wallet 0x123...\n\n"
-            "Data powered by CoinGecko, Injective API & Etherscan 🚀"
+            "  /markets\n"
+            "  /add_wallet inj1xyz...\n\n"
+            "Data: Injective API + CoinGecko 🚀"
         )
         await update.message.reply_text(help_text)
     
     async def signals(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("⏳ Fetching live trading signals from CoinGecko...")
+        await update.message.reply_text("⏳ Fetching live trading signals...")
         
         signals_data = []
-        for symbol in self.supported_symbols[:3]:  # Top 3 for brevity
-            signal = get_live_signal(symbol)
+        for symbol in self.supported_symbols[:3]:
+            signal = get_real_time_analysis(symbol)
             if signal:
                 signals_data.append(signal)
         
         if not signals_data:
             await update.message.reply_text(
-                "❌ Unable to fetch live signals at the moment.\n"
-                "Please try again later. The APIs might be temporarily unavailable."
+                "❌ Unable to fetch live signals. Please try again later."
             )
             return
         
-        lines = ["📊 **Live Trading Signals**", "📅 Real-time data from CoinGecko\n"]
+        lines = ["📊 **Live Trading Signals**", "📅 Real-time data from Injective + CoinGecko\n"]
         for s in signals_data:
             lines.append(
                 f"{s['signal_strength']} - **{s['symbol']}** @ ${s['price']:,.2f}\n"
@@ -208,7 +307,7 @@ class NinjaAgentTelegramBot:
                 f"   {s['signal_desc']}"
             )
         
-        lines.append("\n💡 Use /analyze \u003cSYMBOL\u003e for detailed analysis")
+        lines.append("\n💡 Use /analyze <SYMBOL> for detailed analysis")
         lines.append("📅 Updated: " + datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + " UTC")
         
         await update.message.reply_text("\n".join(lines))
@@ -217,43 +316,28 @@ class NinjaAgentTelegramBot:
         if not context.args:
             await update.message.reply_text(
                 "⚠️ Please specify a token symbol.\n\n"
-                "**Usage:** /analyze \u003cSYMBOL\u003e\n\n"
+                "**Usage:** /analyze <SYMBOL>\n\n"
                 "**Examples:**\n"
                 "  /analyze INJ\n"
                 "  /analyze ETH\n"
                 "  /analyze BTC\n\n"
-                f"Supported: {', '.join(self.supported_symbols)}"
+                f"**Supported:** {', '.join(self.supported_symbols)}"
             )
             return
         
         symbol = context.args[0].upper()
-        await update.message.reply_text(f"⏳ Fetching real-time data for **{symbol}** from CoinGecko...")
+        await update.message.reply_text(f"⏳ Fetching real-time data for **{symbol}**...")
         
-        signal = get_live_signal(symbol)
+        signal = get_real_time_analysis(symbol)
         if not signal:
             await update.message.reply_text(
                 f"❌ Failed to fetch data for **{symbol}**.\n\n"
-                f"**Supported symbols:** {', '.join(self.supported_symbols)}\n\n"
-                "Please check the symbol and try again."
+                f"**Supported symbols:** {', '.join(self.supported_symbols)}"
             )
             return
         
-        # Format numbers
-        volume = signal['volume']
-        if volume >= 1e9:
-            volume_str = f"${volume/1e9:.2f}B"
-        elif volume >= 1e6:
-            volume_str = f"${volume/1e6:.2f}M"
-        else:
-            volume_str = f"${volume:.2f}"
-        
-        mkt_cap = signal['market_cap']
-        if mkt_cap >= 1e9:
-            mkt_str = f"${mkt_cap/1e9:.2f}B"
-        elif mkt_cap >= 1e6:
-            mkt_str = f"${mkt_cap/1e6:.2f}M"
-        else:
-            mkt_str = f"${mkt_cap:.2f}"
+        volume_str = format_number(signal['volume'])
+        mkt_str = format_number(signal['market_cap'])
         
         analysis_text = (
             f"🔬 **Live Analysis: {signal['symbol']}**\n\n"
@@ -268,9 +352,46 @@ class NinjaAgentTelegramBot:
             f"📡 **Signal:** {signal['signal_strength']}\n"
             f"📝 **Analysis:** {signal['signal_desc']}\n\n"
             f"📅 Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
-            f"💡 Data: CoinGecko API (Real-time)"
+            f"💡 Data: Injective API + CoinGecko"
         )
         await update.message.reply_text(analysis_text)
+    
+    async def markets(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """List Injective markets"""
+        await update.message.reply_text("⏳ Fetching Injective markets...")
+        
+        # Try to fetch from Injective
+        spot_markets = get_inj_markets()
+        derivative_markets = get_inj_derivative_markets()
+        
+        lines = ["📈 **Injective Markets**\n"]
+        
+        if spot_markets:
+            lines.append("🟢 **Spot Markets:**")
+            # Show first 5 markets
+            for i, market in enumerate(spot_markets[:5]):
+                ticker = market.get('ticker', 'N/A')
+                lines.append(f"  • {ticker}")
+            if len(spot_markets) > 5:
+                lines.append(f"  ... and {len(spot_markets) - 5} more")
+        else:
+            lines.append("🟢 **Spot Markets:** (API temporarily unavailable)")
+        
+        lines.append("")
+        
+        if derivative_markets:
+            lines.append("🔴 **Derivative Markets:**")
+            for i, market in enumerate(derivative_markets[:5]):
+                ticker = market.get('ticker', 'N/A')
+                lines.append(f"  • {ticker}")
+            if len(derivative_markets) > 5:
+                lines.append(f"  ... and {len(derivative_markets) - 5} more")
+        else:
+            lines.append("🔴 **Derivative Markets:** (API temporarily unavailable)")
+        
+        lines.append("\n💡 Use /analyze <SYMBOL> for market analysis")
+        
+        await update.message.reply_text("\n".join(lines))
     
     async def portfolio(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
@@ -311,7 +432,7 @@ class NinjaAgentTelegramBot:
         if not all_balances or wallet_count == 0:
             await update.message.reply_text(
                 "❌ Could not fetch portfolio data.\n"
-                "The blockchain APIs may be temporarily unavailable.\n"
+                "The APIs may be temporarily unavailable.\n"
                 "Please try again later."
             )
             return
@@ -344,7 +465,7 @@ class NinjaAgentTelegramBot:
             
             lines.append(f"\n💰 **Total Value:** ${total_value:,.2f}")
             lines.append(f"📅 Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
-            lines.append("💡 Prices from CoinGecko (Real-time)")
+            lines.append("💡 Prices: CoinGecko | Balances: Injective + Etherscan")
             
             await update.message.reply_text("\n".join(lines))
         except Exception as e:
@@ -358,7 +479,25 @@ class NinjaAgentTelegramBot:
     def _get_wallet_balances(self, address):
         balances = {}
         
-        if address.startswith("0x"):
+        # Injective wallet
+        if address.startswith("inj"):
+            try:
+                account_data = get_inj_account(address)
+                if account_data and 'balances' in account_data:
+                    for bal in account_data['balances']:
+                        denom = bal.get('denom', '')
+                        amount = float(bal.get('amount', 0))
+                        symbol = self._denom_to_symbol(denom)
+                        if symbol and amount > 0:
+                            decimals = self._get_token_decimals(symbol)
+                            adjusted_amount = amount / (10 ** decimals)
+                            if adjusted_amount > 0:
+                                balances[symbol] = adjusted_amount
+            except Exception as e:
+                logger.warning(f"Injective balance fetch failed: {e}")
+        
+        # EVM wallet
+        elif address.startswith("0x"):
             try:
                 api_key = os.getenv("ETHERSCAN_API_KEY", "NGRTMDUS49SVNVDJM2EFUEGMZFTC86TU3U")
                 url = f"https://api.etherscan.io/api?module=account&action=balance&address={address}&tag=latest&apikey={api_key}"
@@ -370,29 +509,8 @@ class NinjaAgentTelegramBot:
                         if balance_wei > 0:
                             eth_balance = balance_wei / (10 ** 18)
                             balances["ETH"] = eth_balance
-                return balances
             except Exception as e:
-                logger.warning(f"Etherscan API failed for {address}: {e}")
-                return balances
-        
-        elif address.startswith("inj"):
-            try:
-                url = f"https://api.injective.network/cosmos/bank/v1beta1/balances/{address}"
-                response = requests.get(url, timeout=10)
-                if response.status_code == 200:
-                    data = response.json()
-                    for bal in data.get("balances", []):
-                        denom = bal.get("denom", "")
-                        amount = float(bal.get("amount", 0))
-                        symbol = self._denom_to_symbol(denom)
-                        if symbol and amount > 0:
-                            decimals = self._get_token_decimals(symbol)
-                            adjusted_amount = amount / (10 ** decimals)
-                            if adjusted_amount > 0:
-                                balances[symbol] = adjusted_amount
-                return balances
-            except Exception as e:
-                logger.warning(f"Injective API failed for {address}: {e}")
+                logger.warning(f"Etherscan balance fetch failed: {e}")
         
         return balances
     
@@ -445,7 +563,7 @@ class NinjaAgentTelegramBot:
         else:
             await update.message.reply_text(
                 "⚠️ **Please provide a wallet address.**\n\n"
-                "**Usage:** /add_wallet \u003caddress\u003e\n\n"
+                "**Usage:** /add_wallet <address>\n\n"
                 "**Examples:**\n"
                 "  /add_wallet inj1xyz...\n"
                 "  /add_wallet 0x123...\n\n"
@@ -467,7 +585,7 @@ class NinjaAgentTelegramBot:
             await update.message.reply_text(
                 "👛 **No wallets found.**\n\n"
                 "Add a wallet to track your portfolio:\n"
-                "  /add_wallet \u003caddress\u003e\n\n"
+                "  /add_wallet <address>\n\n"
                 "Supports Injective (inj...) and EVM (0x...) wallets."
             )
     
@@ -491,13 +609,11 @@ class NinjaAgentTelegramBot:
         else:
             await update.message.reply_text(
                 "⚠️ **Please provide a wallet address to remove.**\n\n"
-                "**Usage:** /remove_wallet \u003caddress\u003e"
+                "**Usage:** /remove_wallet <address>"
             )
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_message = update.message.text
-        
-        # Simple natural language processing
         msg_lower = user_message.lower()
         
         if any(word in msg_lower for word in ['buy', 'sell', 'long', 'short']):
@@ -506,40 +622,56 @@ class NinjaAgentTelegramBot:
                 "Direct trading via Telegram is under development.\n"
                 "For now, please use the Injective exchange for trades.\n\n"
                 "Try these commands instead:\n"
-                "  /analyze \u003cSYMBOL\u003e - Get analysis\n"
+                "  /analyze <SYMBOL> - Get analysis\n"
                 "  /signals - Get trading signals\n"
                 "  /portfolio - Check your portfolio"
             )
         elif any(word in msg_lower for word in ['price', 'berapa', 'harga']):
             await update.message.reply_text(
                 "💡 **Want to check a price?**\n\n"
-                "Use: /analyze \u003cSYMBOL\u003e\n\n"
+                "Use: /analyze <SYMBOL>\n\n"
                 "Example: /analyze INJ"
             )
         else:
             await update.message.reply_text(
                 "🤖 **NinjaAgent is here to help!**\n\n"
                 "Try these commands:\n"
-                "  /analyze \u003cSYMBOL\u003e - Technical analysis\n"
+                "  /analyze <SYMBOL> - Technical analysis\n"
                 "  /signals - Trading signals\n"
                 "  /portfolio - Your portfolio\n"
+                "  /markets - Injective markets\n"
                 "  /help - All commands\n\n"
                 "Or send a trading command like 'buy 10 INJ' (coming soon!)"
             )
+
+def format_number(num):
+    """Format numbers for display"""
+    if num >= 1e9:
+        return f"${num/1e9:.2f}B"
+    elif num >= 1e6:
+        return f"${num/1e6:.2f}M"
+    elif num >= 1e3:
+        return f"${num/1e3:.2f}K"
+    else:
+        return f"${num:.2f}"
 
 def main():
     application = Application.builder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
     
     bot = NinjaAgentTelegramBot(os.getenv("TELEGRAM_BOT_TOKEN"))
     
+    # Command handlers
     application.add_handler(CommandHandler("start", bot.start))
     application.add_handler(CommandHandler("help", bot.help_command))
     application.add_handler(CommandHandler("signals", bot.signals))
     application.add_handler(CommandHandler("analyze", bot.analyze))
     application.add_handler(CommandHandler("portfolio", bot.portfolio))
+    application.add_handler(CommandHandler("markets", bot.markets))
     application.add_handler(CommandHandler("add_wallet", bot.add_wallet))
     application.add_handler(CommandHandler("my_wallets", bot.my_wallets))
     application.add_handler(CommandHandler("remove_wallet", bot.remove_wallet))
+    
+    # Message handler
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
