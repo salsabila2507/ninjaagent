@@ -101,13 +101,46 @@ def get_inj_balance(address):
         logger.warning(f"Injective balance API failed: {e}")
     return None
 
+# ============================================================
+# INJECTIVE API FUNCTIONS (Primary)
+# Falls back to CoinGecko if In全局jective fails
+# ============================================================
+
+# Helix API endpoints (Injective major markets)
+HELIX_MARKETS = [
+    {"ticker": "INJ/USDT", "market_type": "spot"},
+    {"ticker": "INJ/USDC", "market_type": "spot"},
+    {"ticker": "ETH/USDT", "market_type": "spot"},
+    {"ticker": "BTC/USDT", "market_type": "spot"},
+    {"ticker": "ATOM/USDT", "market_type": "spot"},
+    {"ticker": "OSMO/USDT", "market_type": "spot"},
+    {"ticker": "SOL/USDT", "market_type": "spot"},
+    {"ticker": "INJ/USDT PERP", "market_type": "derivative"},
+    {"ticker": "ETH/USDT PERP", "market_type": "derivative"},
+    {"ticker": "BTC/USDT PERP", "market_type": "derivative"},
+]
+
+def get_helix_markets():
+    """Get Helix/Injective markets"""
+    try:
+        # Try Helix API first
+        url = "https://api.helixmarkets.com/v1/markets"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    except:
+        pass
+    return None
+
 def get_inj_markets():
     """Get Injective spot markets"""
     try:
         url = f"{INJ_INDEXER_API}/spot/markets"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
-            return response.json().get('markets', [])
+            data = response.json()
+            if data and 'markets' in data and data['markets']:
+                return data['markets']
     except Exception as e:
         logger.warning(f"Injective markets API failed: {e}")
     return []
@@ -118,7 +151,9 @@ def get_inj_derivative_markets():
         url = f"{INJ_INDEXER_API}/derivative/markets"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
-            return response.json().get('markets', [])
+            data = response.json()
+            if data and 'markets' in data and data['markets']:
+                return data['markets']
     except Exception as e:
         logger.warning(f"Injective derivative markets API failed: {e}")
     return []
@@ -408,9 +443,24 @@ class NinjaAgentTelegramBot:
         """List Injective markets"""
         await update.message.reply_text("⏳ Fetching Injective markets...")
         
-        # Try to fetch from Injective
+        # Try to fetch from multiple sources
+        # 1. Injective API
         spot_markets = get_inj_markets()
         derivative_markets = get_inj_derivative_markets()
+        
+        # 2. Helix API fallback
+        helix_data = get_helix_markets()
+        
+        # 3. Use hardcoded fallback if APIs fail
+        if not spot_markets and helix_data and 'markets' in helix_data:
+            spot_markets = [m for m in helix_data['markets'] if m.get('market_type') == 'spot']
+        if not derivative_markets and helix_data and 'markets' in helix_data:
+            derivative_markets = [m for m in helix_data['markets'] if m.get('market_type') == 'derivative']
+        
+        # Final fallback to hardcoded data
+        if not spot_markets and not derivative_markets:
+            spot_markets = [m for m in HELIX_MARKETS if m['market_type'] == 'spot']
+            derivative_markets = [m for m in HELIX_MARKETS if m['market_type'] == 'derivative']
         
         lines = ["📈 Injective Markets\n"]
         
